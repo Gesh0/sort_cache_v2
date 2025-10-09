@@ -1,0 +1,60 @@
+# version: "3.9"
+services:
+  db:
+    image: postgres:16
+    container_name: sort_cache
+    environment:
+      POSTGRES_USER: sort_cache
+      POSTGRES_PASSWORD: pass_pass_pass
+      POSTGRES_DB: sort_cache_db
+    volumes:
+      - ../db/001.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      # - ../db/002_test_insert.sql:/docker-entrypoint-initdb.d/02-seeds.sql:ro
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sort_cache -d sort_cache_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pgAdmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: geshovskileo@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: geshogesho
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+  api:
+    build:
+      context: ../api            
+      dockerfile: ../docker/api.dockerfile
+    volumes:
+    - ../api:/app
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: db
+      DB_USER: sort_cache
+      DB_PASS: pass_pass_pass
+      DB_NAME: sort_cache_db
+
+  ui:
+    build:
+      context: ../ui
+      dockerfile: ../docker/ui.dockerfile
+    ports:
+      - "5173:5173"
+
+volumes:
+  db_data:
+  pgadmin_data:

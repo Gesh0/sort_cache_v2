@@ -1,0 +1,25 @@
+# Node
+node_modules/
+npm-debug.log
+package-lock.json
+
+# Vite / React
+dist/
+.vite/
+*.local
+.env
+.env.*.local
+
+# Docker
+*.log
+docker-compose.override.yml
+
+# Postgres / DB
+db_data/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
