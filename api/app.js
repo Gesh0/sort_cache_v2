@@ -1,6 +1,7 @@
-// app.js
 import express from 'express'
 import pg from 'pg'
+import id_map from  './maps/id_map.js'
+import sort_map from './maps/sort_map.js'
 
 const app = express()
 const pool = new pg.Pool({
@@ -110,6 +111,68 @@ app.get('/check-jobs', async (req, res) => {
   res.json(result.rows)
 })
 
+// MAP ENDPOINT
+
+app.get('/id_map', async (req, res) => {
+  try {
+    const data = id_map
+    const result = await pool.query(
+      `INSERT INTO job_queue (type, data) VALUES ($1, $2) RETURNING id`,
+      ['id_map', JSON.stringify(data)]
+    )
+    const jobId = result.rows[0].id
+
+    const values = data.map((m, i) => {
+      const location = m.external_id ?? m.id ?? m.location_id
+      if (location == null) throw new Error(`Map entry ${i} missing id/external_id`)
+      const numeration = String(m.numeration ?? '').replace(/'/g, "''")
+      return `(${jobId}, ${Number(location)}, '${numeration}')`
+    }).join(',')
+
+    if (values.length > 0) {
+      await pool.query(`
+        INSERT INTO id_map (job_ref, location_id, numeration)
+        VALUES ${values}
+      `)
+    }
+
+    res.json({ success: true, job_id: jobId, entries: data.length })
+  } catch (error) {
+    console.error('ID map upload error:', error)
+    res.status(500).json({ error: error.message })
+  }
+})
+
+app.get('/sort_map', async (req, res) => {
+  try {
+    const data = sort_map
+    const result = await pool.query(
+      `INSERT INTO job_queue (type, data) VALUES ($1, $2) RETURNING id`,
+      ['sort_map', JSON.stringify(data)]
+    )
+    const jobId = result.rows[0].id
+
+    const values = data.map((m, i) => {
+      const port = m.port ?? m.p
+      if (port == null) throw new Error(`Map entry ${i} missing port`)
+      const numeration = String(m.numeration ?? '').replace(/'/g, "''")
+      return `(${jobId}, ${Number(port)}, '${numeration}')`
+    }).join(',')
+
+    if (values.length > 0) {
+      await pool.query(`
+        INSERT INTO sort_map (job_ref, port, numeration)
+        VALUES ${values}
+      `)
+    }
+
+    res.json({ success: true, job_id: jobId, entries: data.length })
+  } catch (error) {
+    console.error('Sort map upload error:', error)
+    res.status(500).json({ error: error.message })
+  }
+})
+
 // ============================================
 // START SERVER
 // ============================================
@@ -119,6 +182,8 @@ app.listen(3000, () => {
   console.log(
     'curl -X POST http://localhost:3000/ingest -H "Content-Type: application/json" -d \'{"start_time":"2025-01-01T00:00:00Z","end_time":"2025-01-01T01:00:00Z"}\''
   )
+  console.log('http://localhost:3000/id_map')
+  console.log('http://localhost:3000/sort_map')
   console.log('\ncurl http://localhost:3000/check-raw')
   console.log('curl http://localhost:3000/check-acc')
   console.log('curl http://localhost:3000/check-jobs')

@@ -1,39 +1,37 @@
-CREATE TABLE chain_link_1 (
-  base_id SERIAL PRIMARY KEY,
-  val INT
-);
-
-CREATE TABLE mapping_table (
+-- Job queue for kickstarting worker
+CREATE TABLE job_queue (
   id SERIAL PRIMARY KEY,
-  source_val INT UNIQUE,
-  target_val INT
+  type TEXT NOT NULL CHECK (type IN ('ingest', 'sort_map')),
+  data JSONB NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE chain_link_3 (
+-- Raw ingest data (immutable audit trail)
+CREATE TABLE ingest_raw (
   id SERIAL PRIMARY KEY,
-  base_id INT REFERENCES chain_link_1(base_id),
-  prev_id INT REFERENCES chain_link_1(base_id),
-  map_id INT REFERENCES mapping_table(id),
-  val INT
+  batch_id INTEGER NOT NULL REFERENCES job_queue(id),
+  serial_number TEXT NOT NULL,
+  logistics_point_id INTEGER NOT NULL,
+  logistics_point_name TEXT NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  fetched_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE OR REPLACE FUNCTION insert_chain_link_3() RETURNS trigger AS $$
-DECLARE
-  mapping_id INT;
-BEGIN
-  SELECT id INTO mapping_id FROM mapping_table WHERE source_val = NEW.val LIMIT 1;
-  IF mapping_id IS NULL THEN
-    RETURN NEW;
-  END IF;
+-- Accumulated ingest data (deduplicated, numeration extracted)
+CREATE TABLE ingest_acc (
+  id SERIAL PRIMARY KEY,
+  batch_id INTEGER NOT NULL REFERENCES job_queue(id),
+  serial_number TEXT NOT NULL,
+  numeration TEXT NOT NULL, -- first 3 chars of logistics_point_name
+  updated_at TIMESTAMP NOT NULL,
+  accumulated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
 
-  INSERT INTO chain_link_3 (base_id, prev_id, map_id, val)
-  VALUES (NEW.base_id, NEW.base_id, mapping_id, NEW.val);
-
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER cl1_insert_trigger
-AFTER INSERT ON chain_link_1
-FOR EACH ROW
-EXECUTE FUNCTION insert_chain_link_3();
+-- Sort map configuration (numeration to port mapping)
+CREATE TABLE sort_map (
+  id SERIAL PRIMARY KEY,
+  batch_id INTEGER NOT NULL REFERENCES job_queue(id),
+  numeration TEXT NOT NULL,
+  port INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);x 

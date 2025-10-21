@@ -1,47 +1,41 @@
--- Core job queue
-CREATE TABLE job_queue (
-    id SERIAL PRIMARY KEY,
-    type TEXT NOT NULL CHECK (type IN ('ingest', 'id_map', 'sort_map')),
-    data JSONB NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
-);
+-- Notify on new job insertion (kickstart worker)
+CREATE OR REPLACE FUNCTION notify_new_job()
+RETURNS TRIGGER AS $$
+BEGIN
+  PERFORM pg_notify('new_job', NEW.id::text);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
--- Ingest tables
-CREATE TABLE ingest_raw (
-    id SERIAL PRIMARY KEY,
-    job_ref INTEGER NOT NULL REFERENCES job_queue(id),
-    barcode TEXT NOT NULL,
-    location_id INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
-);
+CREATE TRIGGER job_queue_insert
+AFTER INSERT ON job_queue
+FOR EACH ROW
+EXECUTE FUNCTION notify_new_job();
 
-CREATE TABLE ingest_acc (
-    id SERIAL PRIMARY KEY,
-    raw_ref INTEGER NOT NULL REFERENCES ingest_raw(id),
-    barcode TEXT NOT NULL,
-    location_id INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(barcode)  -- Safety: prevent duplicates
-);
+-- Notify on ingest_acc completion (check if queue empty, derive if yes)
+CREATE OR REPLACE FUNCTION notify_ingest_complete()
+RETURNS TRIGGER AS $$
+BEGIN
+  PERFORM pg_notify('ingest_complete', NEW.batch_id::text);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
--- Derivation tables (add later, but showing structure)
--- CREATE TABLE derived_batch (
---     id SERIAL PRIMARY KEY,
---     job_ids INTEGER[] NOT NULL,  -- Array of job_queue.id
---     created_at TIMESTAMP DEFAULT NOW()
--- );
+CREATE TRIGGER ingest_acc_insert
+AFTER INSERT ON ingest_acc
+FOR EACH ROW
+EXECUTE FUNCTION notify_ingest_complete();
 
--- CREATE TABLE derived_data (
---     id SERIAL PRIMARY KEY,
---     batch_ref INTEGER NOT NULL REFERENCES derived_batch(id),
---     ingest_ref INTEGER NOT NULL REFERENCES ingest_acc(id),
---     barcode TEXT NOT NULL,
---     port TEXT NOT NULL,
---     created_at TIMESTAMP DEFAULT NOW(),
---     UNIQUE(barcode, batch_ref)  -- Safety: one barcode per batch
--- );
+-- Notify on sort_map update (check if queue empty, derive if yes)
+CREATE OR REPLACE FUNCTION notify_sortmap_complete()
+RETURNS TRIGGER AS $$
+BEGIN
+  PERFORM pg_notify('sortmap_complete', NEW.batch_id::text);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
--- Indexes for performance
--- CREATE INDEX idx_job_queue_type ON job_queue(type);
--- CREATE INDEX idx_ingest_raw_job_ref ON ingest_raw(job_ref);
--- CREATE INDEX idx_ingest_acc_barcode ON ingest_acc(barcode);
+CREATE TRIGGER sort_map_insert
+AFTER INSERT ON sort_map
+FOR EACH ROW
+EXECUTE FUNCTION notify_sortmap_complete();
