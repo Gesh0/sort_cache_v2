@@ -8,10 +8,11 @@ services:
       POSTGRES_PASSWORD: pass_pass_pass
       POSTGRES_DB: sort_cache_db
     volumes:
-      - ../db/002.sql:/docker-entrypoint-initdb.d/01-tables.sql:ro
-      - ../db/003.sql:/docker-entrypoint-initdb.d/02-notify-worker.sql:ro
-      - ../db/004.sql:/docker-entrypoint-initdb.d/03-queue-check.sql:ro
-      - ../db/005.sql:/docker-entrypoint-initdb.d/04-accumulate.sql:ro
+      - ../db/001.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ../db/002.sql:/docker-entrypoint-initdb.d/02-triggers.sql:ro
+      - ../db/003.sql:/docker-entrypoint-initdb.d/03-transforms.sql:ro
+      - ../db/004.sql:/docker-entrypoint-initdb.d/04-loop.sql:ro
+      - ../db/005.sql:/docker-entrypoint-initdb.d/04-load_cache.sql:ro
       - db_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
