@@ -1,16 +1,14 @@
 import sort_map from '../data/sort_map.js'
-import { pool } from '../app.js'
-
+import { pool } from '../db.js'
 
 import express from 'express'
 const router = express.Router()
-
 
 // INGEST JOB
 
 router.get('/ingest', async (req, res) => {
   try {
-    const { dateFrom } = req.query
+    const { dateFrom, dateTo } = req.query
 
     const result = await pool.query(
       `
@@ -18,7 +16,7 @@ router.get('/ingest', async (req, res) => {
       VALUES ('ingest', $1)
       RETURNING *
     `,
-      [JSON.stringify({ dateFrom })]
+      [JSON.stringify({ dateFrom, dateTo })]
     )
 
     res.json(result.rows[0])

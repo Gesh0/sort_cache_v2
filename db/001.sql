@@ -44,3 +44,10 @@ CREATE TABLE derived_cache (
   port INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE scan_log (
+  id SERIAL PRIMARY KEY,
+  serial_number TEXT NOT NULL,
+  port INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+)

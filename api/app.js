@@ -1,21 +1,15 @@
+//
 import express from 'express'
-import pg from 'pg'
+const app = express()
 //
 import ingest_worker from './workers/ingest_worker.js'
-import cacheRoute from './workers/cacheRoute.js'
 //
 import queryRoutes from './routes/queryRoutes.js'
 import jobsRoutes from './routes/jobsRoutes.js'
 import dataRoutes from './routes/dataRoutes.js'
-
-const app = express()
-export const pool = new pg.Pool({
-  host: 'db',
-  port: 5432,
-  database: 'sort_cache_db',
-  user: 'sort_cache',
-  password: 'pass_pass_pass',
-})
+import cacheRoute from './routes/cacheRoute.js'
+//
+import { pool } from './db.js'
 
 app.use(express.json())
 

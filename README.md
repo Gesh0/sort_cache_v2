@@ -11,9 +11,10 @@
 - [X] load
 ---
 - [X] TEST 1
-- [ ] Refactor 1
-- [ ] TEST 2
-- [ ] scan_log
-- [ ] register scanned parcels
+- [X] Refactor 1
+- [X] date to and from node filter
+- [X] scan_log
 - [ ] startup 
 - [ ] in memory timer
+- [ ] TEST 2
+- [ ] register scanned parcels

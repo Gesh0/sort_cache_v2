@@ -1,29 +1,29 @@
 import express from 'express'
-const router = express.Router()
-//
 import mock from '../data/mock.js'
 import real from '../data/real.js'
 
+const router = express.Router()
 
 router.get('/:type', (req, res) => {
   const { type } = req.params
-  const { dateFrom } = req.query
+  const { dateFrom, dateTo } = req.query
 
-  function dateFilter(data, dateFrom) {
-    if (!dateFrom) return data
+  const sources = { mock, real }
+  const data = sources[type]
+  if (!data)
+    return res
+      .status(400)
+      .json({ error: 'Invalid type. Use "mock" or "real".' })
 
-    const filterDate = new Date(dateFrom)
+  const from = dateFrom ? new Date(dateFrom) : null
+  const to = dateTo ? new Date(dateTo) : null
 
-    return data.filter((item) => {
-      const itemDate = new Date(item.updatedAt)
-      return itemDate >= filterDate
-    })
-  }
+  const filtered = data.filter(({ updatedAt }) => {
+    const d = new Date(updatedAt)
+    return (!from || d >= from) && (!to || d <= to)
+  })
 
-  if (type === 'mock') return res.json(dateFilter(mock, dateFrom))
-  if (type === 'real') return res.json(dateFilter(real, dateFrom))
-
-  res.status(400).json({ error: 'Invalid type. Use "mock" or "real"' })
+  res.json(filtered)
 })
 
 export default router
