@@ -1,8 +1,12 @@
 import express from 'express'
 import pg from 'pg'
+//
 import sort_map from './sort_map.js'
 import ingest_worker from './ingest_worker.js'
 import load_cache from './load_cache.js'
+//
+import mock from './test_data/mock.js'
+import real from './test_data/real.js'
 
 const app = express()
 const pool = new pg.Pool({
@@ -15,7 +19,10 @@ const pool = new pg.Pool({
 
 app.use(express.json())
 
+// ingest worker
 ingest_worker(pool)
+
+// sort endpoint
 const getPort = await load_cache(pool)
 
 // CACHE
@@ -27,7 +34,6 @@ app.get('/cache/:barcode', (req, res) => {
   }
   res.json({ port })
 })
-
 
 // QUERY ENDPOINTS
 
@@ -43,40 +49,32 @@ app.get('/table', async (req, res) => {
 
 // FAKE EXTERNAL API
 
-app.get('/data', (req, res) => {
-  res.json([
-    {
-      // test 1
-      serialNumber: 'ABC1',
-      logisticsPointId: 1,
-      logisticsPointName: '001 - Jug',
-      updatedAt: '2025-10-23T10:19:01.139Z',
-    },
-    {
-      // test 2
-      serialNumber: 'ABC2',
-      logisticsPointId: 2,
-      logisticsPointName: '002 - Test',
-      updatedAt: '2025-10-23T10:19:01.139Z',
-    },
-    {
-      // test 1 overwrite
-      serialNumber: 'ABC1',
-      logisticsPointId: 1,
-      logisticsPointName: '001 - Jug',
-      updatedAt: '2025-10-23T10:25:01.139Z',
-    },
-  ])
+app.get('/data/:type', (req, res) => {
+  const { type } = req.params
+  const { dateFrom } = req.query
+
+  function dateFilter(data, dateFrom) {
+    if (!dateFrom) return data
+
+    const filterDate = new Date(dateFrom)
+
+    return data.filter((item) => {
+      const itemDate = new Date(item.updatedAt)
+      return itemDate >= filterDate
+    })
+  }
+
+  if (type === 'mock') return res.json(dateFilter(mock, dateFrom))
+  if (type === 'real') return res.json(dateFilter(real, dateFrom))
+
+  res.status(400).json({ error: 'Invalid type. Use "mock" or "real"' })
 })
 
 // INGEST JOB
 
 app.get('/ingest', async (req, res) => {
   try {
-    const { start_time, end_time } = {
-      start_time: '2025-10-23T10:19:01.139Z',
-      end_time: '2025-10-23T10:25:01.139Z',
-    }
+    const { dateFrom } = req.query
 
     const result = await pool.query(
       `
@@ -84,7 +82,7 @@ app.get('/ingest', async (req, res) => {
       VALUES ('ingest', $1)
       RETURNING *
     `,
-      [JSON.stringify({ start_time, end_time })]
+      [JSON.stringify({dateFrom})]
     )
 
     res.json(result.rows[0])
@@ -114,6 +112,4 @@ app.get('/sortmap', async (req, res) => {
 app.listen(3000, () => {
   console.log('Server running on http://localhost:3000')
 })
-
-// NOTIFY LOGGING
 

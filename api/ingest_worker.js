@@ -2,12 +2,17 @@ export default async function (pool) {
   const client = await pool.connect()
   await client.query('LISTEN ingest_worker')
 
-
   client.on('notification', async (msg) => {
     if (msg.channel !== 'ingest_worker') return
 
-    const { job_id } = JSON.parse(msg.payload)
-    const response = await fetch('http://localhost:3000/data')
+    //
+    console.log(msg.payload)
+
+    const { job_id, data } = JSON.parse(msg.payload)
+    const { dateFrom } = data
+    const response = await fetch(
+      `http://localhost:3000/data/mock?dateFrom=${dateFrom}`
+    )
     const items = await response.json()
 
     const values = items.map((item) => [

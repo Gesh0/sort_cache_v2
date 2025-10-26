@@ -16,10 +16,6 @@ export default [
     "port": 6
   },
   {
-    "numeration": "211",
-    "port": 7
-  },
-  {
     "numeration": "101",
     "port": 8
   },

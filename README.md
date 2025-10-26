@@ -10,26 +10,10 @@
 - [X] derive
 - [X] load
 ---
-- [ ] TEST
-- [ ] Refactor this ugly mess
-- [ ] preload map
-- [ ] in memory timer
+- [X] TEST 1
+- [ ] Refactor 1
+- [ ] TEST 2
 - [ ] scan_log
 - [ ] register scanned parcels
-
-
----
-
-1. hourly time diff
-2. append jobs 
-3. queueCheck() 4 - true | x - false
-4. derive based on latest state
-5. do nothing
-
-queueCheck()
-- returns true OR false if x jobs have relations to results
-
-adapters
-- job_queue without latest true = notify worker false = null
-- ingest_acc || sortmap true = derive false = notify worker
-  
+- [ ] startup 
+- [ ] in memory timer

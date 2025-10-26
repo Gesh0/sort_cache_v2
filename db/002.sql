@@ -14,21 +14,18 @@ BEGIN
     SELECT 1 
     FROM job_queue jq
     WHERE jq.type = 'ingest'
-      -- get latest job
-      AND jq.id > COALESCE((SELECT MAX(id) FROM ingest_acc), 0)
-      -- that is not newer than this job
+      AND jq.id > COALESCE((SELECT MAX(job_ref) FROM ingest_acc), 0)
       AND jq.id < NEW.id
-      AND NOT EXISTS (SELECT 1 FROM ingest_acc WHERE ingest_acc.id = jq.id)
+      AND NOT EXISTS (SELECT 1 FROM ingest_acc WHERE ingest_acc.job_ref = jq.id)
   ) THEN
-    PERFORM pg_notify('ingest_worker', json_build_object(
-      'job_id', (
-        SELECT MIN(id) 
-        FROM job_queue 
-        WHERE type = 'ingest' 
-          AND NOT EXISTS (SELECT 1 FROM ingest_acc WHERE ingest_acc.id = job_queue.id)
-      ),
-      'data', NEW.data
-    )::text);
+    PERFORM pg_notify('ingest_worker', (
+      SELECT json_build_object('job_id', id, 'data', data)::text
+      FROM job_queue 
+      WHERE type = 'ingest' 
+        AND NOT EXISTS (SELECT 1 FROM ingest_acc WHERE ingest_acc.job_ref = job_queue.id)
+      ORDER BY id
+      LIMIT 1
+    ));
   END IF;
   
   RETURN NEW;
