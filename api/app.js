@@ -9,7 +9,7 @@ import jobsRoutes from './routes/jobsRoutes.js'
 import dataRoutes from './routes/dataRoutes.js'
 import cacheRoute from './routes/cacheRoute.js'
 //
-import { pool } from './db.js'
+import { initIngest, initSortmap } from './init.js'
 
 app.use(express.json())
 
@@ -18,7 +18,11 @@ app.use('/query', queryRoutes)
 app.use('/jobs', jobsRoutes)
 
 // init ingest worker
-ingest_worker(pool)
+ingest_worker()
+
+// init
+initSortmap()
+initIngest()
 
 // cache endpoint
 app.use('/cache', cacheRoute)

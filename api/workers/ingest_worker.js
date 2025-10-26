@@ -1,4 +1,6 @@
-export default async function (pool) {
+import { pool } from '../db.js'
+
+export default async function () {
   const client = await pool.connect()
   await client.query('LISTEN ingest_worker')
 
@@ -9,9 +11,9 @@ export default async function (pool) {
     console.log(msg.payload)
 
     const { job_id, data } = JSON.parse(msg.payload)
-    const { dateFrom } = data
+    const { dateFrom, dateTo } = data
     const response = await fetch(
-      `http://localhost:3000/data/mock?dateFrom=${dateFrom}`
+      `http://localhost:3000/data/mock?dateFrom=${dateFrom}&dateTo=${dateTo}`
     )
     const items = await response.json()
 

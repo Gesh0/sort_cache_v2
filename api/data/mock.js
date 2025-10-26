@@ -3,7 +3,7 @@ export default [
     serialNumber: 'ABC1',
     logisticsPointId: 1,
     logisticsPointName: '001 - Jug',
-    updatedAt: '  ',
+    updatedAt: '2025-10-20T01:00:00.00Z',
   },
   {
     serialNumber: 'ABC2',

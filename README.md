@@ -14,6 +14,7 @@
 - [X] Refactor 1
 - [X] date to and from node filter
 - [X] scan_log
+- [ ] Revamp queue logic < 
 - [ ] startup 
 - [ ] in memory timer
 - [ ] TEST 2

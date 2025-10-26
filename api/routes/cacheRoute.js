@@ -13,7 +13,6 @@ async function refreshCache() {
   `)
   cache = new Map(rows.map(r => [r.serial_number, r.port]))
   ready = true
-  console.log(`Cache loaded: ${cache.size} items`)
 }
 
 async function initCache() {
