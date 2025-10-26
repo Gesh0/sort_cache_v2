@@ -1,4 +1,4 @@
-import sort_map from '../sort_map.js'
+import sort_map from '../data/sort_map.js'
 import { pool } from '../app.js'
 
 

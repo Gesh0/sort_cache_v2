@@ -1,5 +1,8 @@
-// cache_loader.js
-export default async function (pool) {
+import express from 'express'
+import { pool } from '../app.js'
+const router = express.Router()
+
+async function loadCache(pool) {
   const client = await pool.connect()
   await client.query('LISTEN load_cache')
 
@@ -22,3 +25,14 @@ export default async function (pool) {
 
   return (serial_number) => cache.get(serial_number) || null
 }
+
+router.get('/:barcode', (req, res) => {
+  const cache = loadCache(pool)
+  const port = cache(req.params.barcode)
+  if (port === null) {
+    return res.status(404).json({ error: 'Not found' })
+  }
+  res.json({ port })
+})
+
+export default router
