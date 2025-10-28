@@ -14,8 +14,10 @@
 - [X] Refactor 1
 - [X] date to and from node filter
 - [X] scan_log
-- [ ] Revamp queue logic < 
-- [ ] startup 
-- [ ] in memory timer
+- [X] Revamp queue logic < // loop on no data double execution jobs 
+- [X] init 
+- [X] hourly jobs
+- [ ] refactor hourly
+- [ ] in memory timer 
 - [ ] TEST 2
 - [ ] register scanned parcels

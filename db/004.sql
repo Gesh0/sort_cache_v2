@@ -1,3 +1,79 @@
+-- ----------------------------------------------------------------------------
+-- Transform raw ingest data to accumulated state
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION transform_to_acc()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_new_job_ref INTEGER;
+BEGIN
+  SELECT MAX(job_ref) INTO v_new_job_ref FROM ingest_raw;
+
+  WITH 
+  new_state AS (
+    SELECT DISTINCT ON (serial_number)
+      serial_number,
+      LEFT(logistics_point_name, 3) AS numeration,
+      updated_at
+    FROM ingest_raw
+    WHERE job_ref = v_new_job_ref
+    ORDER BY serial_number, updated_at DESC
+  ),
+  prev_state AS (
+    SELECT DISTINCT ON (serial_number)
+      serial_number,
+      numeration,
+      updated_at
+    FROM ingest_acc
+    WHERE job_ref < v_new_job_ref
+    ORDER BY serial_number, job_ref DESC
+  ),
+  active_prev AS (
+    SELECT ps.*
+    FROM prev_state ps
+    WHERE NOT EXISTS (
+      SELECT 1 FROM scan_log
+      WHERE serial_number = ps.serial_number
+      AND created_at < NOW() - INTERVAL '7 days'
+    )
+  ),
+  merged AS (
+    SELECT * FROM active_prev
+    WHERE serial_number NOT IN (SELECT serial_number FROM new_state)
+    UNION ALL
+    SELECT * FROM new_state
+  )
+  
+  INSERT INTO ingest_acc (job_ref, serial_number, numeration, updated_at)
+  SELECT v_new_job_ref, serial_number, numeration, updated_at
+  FROM merged;
+
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER transform_acc_trigger
+  AFTER INSERT ON ingest_raw
+  FOR EACH STATEMENT
+  EXECUTE FUNCTION transform_to_acc();
+
+-- ----------------------------------------------------------------------------
+-- Process sortmap job inline
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION process_sortmap_job(p_job_id INTEGER)
+RETURNS VOID AS $$
+BEGIN
+  INSERT INTO sort_map (job_ref, numeration, port)
+  SELECT 
+    p_job_id,
+    (item->>'numeration')::VARCHAR(3),
+    (item->>'port')::INTEGER
+  FROM jsonb_array_elements((SELECT data FROM job_queue WHERE id = p_job_id)) AS item;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ----------------------------------------------------------------------------
+-- Derive cache from latest accumulated state and sortmap
+-- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION derive_cache(p_acc_ref INTEGER, p_sortmap_ref INTEGER)
 RETURNS VOID AS $$
 BEGIN
@@ -19,71 +95,3 @@ BEGIN
   WHERE sm.job_ref = p_sortmap_ref;
 END;
 $$ LANGUAGE plpgsql;
-
-CREATE TABLE derivation_state (
-  id INTEGER PRIMARY KEY DEFAULT 1,
-  last_acc_ref INTEGER DEFAULT 0,
-  last_sortmap_ref INTEGER DEFAULT 0,
-  CHECK (id = 1)
-);
-
-INSERT INTO derivation_state (id) VALUES (1);
-
-CREATE OR REPLACE FUNCTION results_queue_check()
-RETURNS TRIGGER AS $$
-DECLARE
-  v_latest_acc INTEGER;
-  v_latest_sortmap INTEGER;
-  v_last_derived_acc INTEGER;
-  v_last_derived_sortmap INTEGER;
-BEGIN
-  SELECT last_acc_ref, last_sortmap_ref INTO v_last_derived_acc, v_last_derived_sortmap FROM derivation_state;
-  
-  v_latest_acc := COALESCE((SELECT MAX(job_ref) FROM ingest_acc), 0);
-  v_latest_sortmap := COALESCE((SELECT MAX(job_ref) FROM sort_map), 0);
-  
-  IF NOT EXISTS(
-    SELECT 1 FROM job_queue
-    WHERE type = 'ingest' AND id > v_latest_acc
-      AND NOT EXISTS (SELECT 1 FROM ingest_acc WHERE job_ref = job_queue.id)
-  ) AND NOT EXISTS(
-    SELECT 1 FROM job_queue
-    WHERE type = 'sort_map' AND id > v_latest_sortmap
-      AND NOT EXISTS (SELECT 1 FROM sort_map WHERE job_ref = job_queue.id)
-  ) AND (v_latest_acc > v_last_derived_acc OR v_latest_sortmap > v_last_derived_sortmap) THEN
-    
-    PERFORM derive_cache(v_latest_acc, v_latest_sortmap);
-    UPDATE derivation_state SET last_acc_ref = v_latest_acc, last_sortmap_ref = v_latest_sortmap;
-    
-  ELSE
-    IF EXISTS(
-      SELECT 1 FROM job_queue WHERE type = 'ingest'
-        AND NOT EXISTS (SELECT 1 FROM ingest_acc WHERE job_ref = job_queue.id)
-    ) THEN
-      PERFORM pg_notify('ingest_worker', json_build_object(
-        'job_id', (SELECT MIN(id) FROM job_queue WHERE type = 'ingest' AND NOT EXISTS (SELECT 1 FROM ingest_acc WHERE job_ref = job_queue.id)),
-        'data', (SELECT data FROM job_queue WHERE id = (SELECT MIN(id) FROM job_queue WHERE type = 'ingest' AND NOT EXISTS (SELECT 1 FROM ingest_acc WHERE job_ref = job_queue.id)))
-      )::text);
-    END IF;
-    
-    IF EXISTS(
-      SELECT 1 FROM job_queue WHERE type = 'sort_map'
-        AND NOT EXISTS (SELECT 1 FROM sort_map WHERE job_ref = job_queue.id)
-    ) THEN
-      PERFORM process_sortmap_job((SELECT MIN(id) FROM job_queue WHERE type = 'sort_map' AND NOT EXISTS (SELECT 1 FROM sort_map WHERE job_ref = job_queue.id)));
-    END IF;
-  END IF;
-  
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER ingest_acc_results_trigger
-  AFTER INSERT ON ingest_acc
-  FOR EACH STATEMENT
-  EXECUTE FUNCTION results_queue_check();
-
-CREATE TRIGGER sort_map_results_trigger
-  AFTER INSERT ON sort_map
-  FOR EACH STATEMENT
-  EXECUTE FUNCTION results_queue_check();

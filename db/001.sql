@@ -1,7 +1,6 @@
 
 -- GLOBAL SCHEMA
 
-
 CREATE TABLE job_queue (
   id SERIAL PRIMARY KEY,
   type TEXT NOT NULL CHECK (type IN ('ingest', 'sort_map')),

@@ -9,7 +9,7 @@ import jobsRoutes from './routes/jobsRoutes.js'
 import dataRoutes from './routes/dataRoutes.js'
 import cacheRoute from './routes/cacheRoute.js'
 //
-import { initIngest, initSortmap } from './init.js'
+import { initIngest, bootstrapIngest, bootstrapSortmap } from './init.js'
 
 app.use(express.json())
 
@@ -20,9 +20,12 @@ app.use('/jobs', jobsRoutes)
 // init ingest worker
 ingest_worker()
 
-// init
-initSortmap()
+// init 
+// async race condition on preload ei init starts before bootstrap finishes
+// bootstrapSortmap()
+// bootstrapIngest()
 initIngest()
+
 
 // cache endpoint
 app.use('/cache', cacheRoute)

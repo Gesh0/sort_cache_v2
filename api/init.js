@@ -1,27 +1,103 @@
 import { pool } from './db.js'
 
-async function tableCheck(table) {
-  const results = await pool.query(`SELECT COUNT(*) FROM ${table}`)
-  const count = parseInt(results.rows[0].count, 10)
-  console.log('count: ' + count)
-  if (count <= 0) return false
-  if (count >= 1) return true
+// ----------------------------------------
+// Bootstrap Functions (Testing Only)
+// ----------------------------------------
+export async function bootstrapIngest() {
+  const hasJobs = await pool.query(`SELECT EXISTS(SELECT 1 FROM job_queue WHERE type = 'ingest')`)
+  if (hasJobs.rows[0].exists) {
+    return console.log('bootstrap: jobs exist, skipping')
+  }
+
+  // Testing data timeframe
+  const dateFrom = '2025-10-28T10:00:00.00Z'
+  const dateTo = '2025-10-28T11:00:00.00Z'
+
+  await fetch(`http://localhost:3000/jobs/ingest?dateFrom=${dateFrom}&dateTo=${dateTo}`)
 }
 
-export async function initSortmap() {
-  const check = await tableCheck('sort_map')
-  if (check === false) await fetch(`http://localhost:3000/jobs/sortmap`)
-  if (check === true) console.log('init sortmap skip')
+export async function bootstrapSortmap() {
+  const hasJobs = await pool.query(`SELECT EXISTS(SELECT 1 FROM job_queue WHERE type = 'sort_map')`)
+  if (hasJobs.rows[0].exists) {
+    return console.log('bootstrap: sortmap exists, skipping')
+  }
+
+  await fetch(`http://localhost:3000/jobs/sortmap`)
+}
+
+// ----------------------------------------
+// Production Init Functions
+// ----------------------------------------
+async function getLastJobTime() {
+  // Get latest job's dateTo, using UTC
+  const result = await pool.query(`
+    SELECT (data->>'dateTo')::timestamptz at time zone 'UTC' as last_time
+    FROM job_queue
+    WHERE type = 'ingest'
+    ORDER BY id DESC
+    LIMIT 1
+  `)
+
+  if (!result.rows[0]?.last_time) {
+    throw new Error('No previous jobs found - recovery needed')
+  }
+
+  return new Date(result.rows[0].last_time)
+}
+
+function generateIngestSegments(lastTime, nowTime) {
+  const segments = []
+  const oneHour = 60 * 60 * 1000
+
+  // Ensure UTC comparison
+  const utcLastTime = new Date(lastTime.toISOString())
+  const utcNowTime = new Date(nowTime.toISOString())
+
+  let currentFrom = utcLastTime
+
+  while (currentFrom < utcNowTime) {
+    const currentTo = new Date(
+      Math.min(currentFrom.getTime() + oneHour, utcNowTime.getTime())
+    )
+
+    segments.push({
+      dateFrom: currentFrom.toISOString(),
+      dateTo: currentTo.toISOString(),
+    })
+
+    currentFrom = currentTo
+  }
+
+  return segments
 }
 
 export async function initIngest() {
-  const check = await tableCheck('ingest_raw')
-  if (check) return console.log('init ingest skip')
+  try {
+    const lastTime = await getLastJobTime()
+    const nowTime = new Date() // Will be converted to UTC in generateIngestSegments
+    const segments = generateIngestSegments(lastTime, nowTime)
 
-  const now = new Date()
-  const dateFrom = new Date(now.setMinutes(0, 0, 0)).toISOString()
-  const dateTo = new Date(now.setHours(now.getHours() + 1)).toISOString()
+    if (segments.length === 0) {
+      return console.log('init: no new segments needed')
+    }
 
-  const domain = `http://localhost:3000/jobs/ingest`
-  await fetch(`${domain}?dateFrom=${dateFrom}&dateTo=${dateTo}`)
+    // Bulk insert all segments
+    const values = segments
+      .map((_, i) => `($${i * 2 + 1}, $${i * 2 + 2})`)
+      .join(',')
+    const params = segments.flatMap((s) => ['ingest', JSON.stringify(s)])
+
+    await pool.query(
+      `INSERT INTO job_queue (type, data) VALUES ${values}`,
+      params
+    )
+  } catch (error) {
+    if (error.message === 'No previous jobs found - recovery needed') {
+      console.error('Recovery needed - no previous state found')
+      // Here you would trigger recovery process
+      return
+    }
+    throw error
+  }
 }
+
