@@ -1,87 +1,122 @@
 export default [
-  // HOUR 1: 06:00-07:00 (early morning baseline)
+  // ============================================
+  // HOUR 1: 18:00-19:00 local = 16:00-17:00 UTC
+  // ============================================
   {
-    serialNumber: 'SN001',
+    serialNumber: 'EARLY001',
     logisticsPointId: 1,
-    logisticsPointName: '001 - Jug',
-    updatedAt: '2025-10-29T06:15:00.00Z',
+    logisticsPointName: '001 - Skopje Center',
+    updatedAt: '2025-10-29T18:15:00+02:00', // 16:15 UTC
   },
   {
-    serialNumber: 'SN002',
+    serialNumber: 'EARLY002',
     logisticsPointId: 2,
-    logisticsPointName: '101 - Sever',
-    updatedAt: '2025-10-29T06:45:00.00Z',
+    logisticsPointName: '101 - Aerodrom',
+    updatedAt: '2025-10-29T18:30:00+02:00', // 16:30 UTC
   },
-
-  // HOUR 2: 07:00-08:00
   {
-    serialNumber: 'SN003',
+    serialNumber: 'EARLY003',
     logisticsPointId: 3,
-    logisticsPointName: '102 - Zapad',
-    updatedAt: '2025-10-29T07:20:00.00Z',
+    logisticsPointName: '201 - Karpos',
+    updatedAt: '2025-10-29T18:45:00+02:00', // 16:45 UTC
   },
 
-  // HOUR 3: 08:00-09:00
+  // ============================================
+  // HOUR 2: 19:00-20:00 local = 17:00-18:00 UTC
+  // ============================================
   {
-    serialNumber: 'SN004',
-    logisticsPointId: 4,
-    logisticsPointName: '103 - Istok',
-    updatedAt: '2025-10-29T08:30:00.00Z',
-  },
-  {
-    serialNumber: 'SN001', // MOVED - tests dedupe (should use this, not 06:15)
-    logisticsPointId: 5,
-    logisticsPointName: '111 - Centar',
-    updatedAt: '2025-10-29T08:50:00.00Z',
-  },
-
-  // HOUR 4: 09:00-10:00 (BOOTSTRAP HOUR)
-  {
-    serialNumber: 'TEST',
+    serialNumber: 'MID001',
     logisticsPointId: 1,
-    logisticsPointName: '001 - Jug',
-    updatedAt: '2025-10-29T09:10:00.00Z',
+    logisticsPointName: '102 - Kisela Voda',
+    updatedAt: '2025-10-29T19:10:00+02:00', // 17:10 UTC
   },
   {
-    serialNumber: 'SN005',
+    serialNumber: 'MID002',
     logisticsPointId: 2,
-    logisticsPointName: '112 - Sever',
-    updatedAt: '2025-10-29T09:35:00.00Z',
+    logisticsPointName: '111 - Centar Plaza',
+    updatedAt: '2025-10-29T19:25:00+02:00', // 17:25 UTC
   },
-
-  // HOUR 5: 10:00-11:00 (INIT CATCHES THIS)
   {
-    serialNumber: 'TEST2',
+    serialNumber: 'MID003',
     logisticsPointId: 3,
-    logisticsPointName: '121 - Zapad',
-    updatedAt: '2025-10-29T10:05:00.00Z',
-  },
-  {
-    serialNumber: 'SN002', // MOVED - tests dedupe
-    logisticsPointId: 4,
-    logisticsPointName: '122 - Istok',
-    updatedAt: '2025-10-29T10:40:00.00Z',
+    logisticsPointName: '121 - GTC',
+    updatedAt: '2025-10-29T19:50:00+02:00', // 17:50 UTC
   },
 
-  // HOUR 6: 11:00-12:00 (CURRENT INCOMPLETE HOUR - timer will catch at 12:00)
+  // ============================================
+  // HOUR 3: 20:00-21:00 local = 18:00-19:00 UTC
+  // *** BOOTSTRAP TARGETS THIS HOUR ***
+  // ============================================
   {
-    serialNumber: 'SN006',
-    logisticsPointId: 5,
-    logisticsPointName: '123 - Centar',
-    updatedAt: '2025-10-29T11:20:00.00Z',
-  },
-  {
-    serialNumber: 'TEST', // MOVED AGAIN - tests multiple moves
-    logisticsPointId: 2,
-    logisticsPointName: '124 - Sever',
-    updatedAt: '2025-10-29T11:45:00.00Z',
-  },
-
-  // HOUR 7: 12:00-13:00 (FUTURE - timer will catch at 13:00)
-  {
-    serialNumber: 'SN007',
+    serialNumber: 'BOOT001',
     logisticsPointId: 1,
-    logisticsPointName: '131 - Jug',
-    updatedAt: '2025-10-29T12:25:00.00Z',
+    logisticsPointName: '103 - Cair',
+    updatedAt: '2025-10-29T20:10:00+02:00', // 18:10 UTC ✓
+  },
+  {
+    serialNumber: 'BOOT002',
+    logisticsPointId: 2,
+    logisticsPointName: '112 - City Mall',
+    updatedAt: '2025-10-29T20:25:00+02:00', // 18:25 UTC ✓
+  },
+  {
+    serialNumber: 'BOOT003',
+    logisticsPointId: 3,
+    logisticsPointName: '122 - Ramstore',
+    updatedAt: '2025-10-29T20:45:00+02:00', // 18:45 UTC ✓
+  },
+
+  // ============================================
+  // DEDUPE TEST: BOOT001 appears twice
+  // ============================================
+  {
+    serialNumber: 'BOOT001',
+    logisticsPointId: 5,
+    logisticsPointName: '203 - Bunjakovec',
+    updatedAt: '2025-10-29T20:50:00+02:00', // 18:50 UTC - later, should win ✓
+  },
+
+  // ============================================
+  // SPAN TEST: Item across all three hours
+  // ============================================
+  {
+    serialNumber: 'SPAN001',
+    logisticsPointId: 1,
+    logisticsPointName: '123 - Vero',
+    updatedAt: '2025-10-29T18:20:00+02:00', // 16:20 UTC
+  },
+  {
+    serialNumber: 'SPAN001',
+    logisticsPointId: 2,
+    logisticsPointName: '131 - Veles',
+    updatedAt: '2025-10-29T19:35:00+02:00', // 17:35 UTC
+  },
+  {
+    serialNumber: 'SPAN001',
+    logisticsPointId: 3,
+    logisticsPointName: '141 - Prilep',
+    updatedAt: '2025-10-29T20:30:00+02:00', // 18:30 UTC - latest, should win ✓
+  },
+
+  // ============================================
+  // DEDUPE TEST: Multiple updates same hour
+  // ============================================
+  {
+    serialNumber: 'DEDUPE001',
+    logisticsPointId: 1,
+    logisticsPointName: '001 - Skopje Center',
+    updatedAt: '2025-10-29T20:05:00+02:00', // 18:05 UTC
+  },
+  {
+    serialNumber: 'DEDUPE001',
+    logisticsPointId: 2,
+    logisticsPointName: '101 - Aerodrom',
+    updatedAt: '2025-10-29T20:35:00+02:00', // 18:35 UTC
+  },
+  {
+    serialNumber: 'DEDUPE001',
+    logisticsPointId: 3,
+    logisticsPointName: '201 - Karpos',
+    updatedAt: '2025-10-29T20:55:00+02:00', // 18:55 UTC - latest, should win ✓
   },
 ]

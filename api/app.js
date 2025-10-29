@@ -18,14 +18,10 @@ app.use('/query', queryRoutes)
 app.use('/jobs', jobsRoutes)
 
 // init ingest worker
-ingest_worker()
+await ingest_worker()
 
-// init 
+// init
 // async race condition on preload ei init starts before bootstrap finishes
-// bootstrapSortmap()
-// bootstrapIngest()
-initIngest()
-
 
 // cache endpoint
 app.use('/cache', cacheRoute)
@@ -33,6 +29,9 @@ app.use('/cache', cacheRoute)
 // FAKE EXTERNAL API
 app.use('/data', dataRoutes)
 
-app.listen(3000, () => {
+app.listen(3000, async () => {
   console.log('Server running on http://localhost:3000')
+  await bootstrapSortmap()
+  await bootstrapIngest()
+  // initIngest()
 })

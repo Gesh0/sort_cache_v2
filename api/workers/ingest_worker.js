@@ -7,14 +7,17 @@ export default async function () {
   client.on('notification', async (msg) => {
     if (msg.channel !== 'ingest_worker') return
 
-    //
     console.log(msg.payload)
 
     const { job_id, data } = JSON.parse(msg.payload)
     const { dateFrom, dateTo } = data
-    const response = await fetch(
-      `http://localhost:3000/data/mock?dateFrom=${dateFrom}&dateTo=${dateTo}`
-    )
+
+    const url = new URL('http://localhost:3000/data/mock')
+    url.searchParams.set('dateFrom', dateFrom)
+    url.searchParams.set('dateTo', dateTo)
+    console.log(url.toString())
+    const response = await fetch(url.toString())
+
     const items = await response.json()
 
     const values = items.map((item) => [

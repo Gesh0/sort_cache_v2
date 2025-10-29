@@ -21,5 +21,14 @@
 - [X] in memory timer 
 - [ ] ENV + Bootstrap refactor 18:00
 - [ ] PRELIM TEST memory timer + real api + real data 19:00 - 21:00
+- [ ] error ports
+- [ ] auth for external API
 - [ ] overnight test 21:00 - 09:00
 - [ ] register scanned parcels
+---
+- [ ] ghost removal
+- [ ] unified timestamps
+- [ ] connection checks
+- [ ] error handling
+- [ ] batch overlap
+

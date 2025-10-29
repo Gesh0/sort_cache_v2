@@ -9,8 +9,22 @@ export async function bootstrapIngest() {
   }
 
   const oneHour = 60 * 60 * 1000
-  const lastHourStart = Math.floor(Date.now() / oneHour) * oneHour - oneHour
-  const lastHourEnd = lastHourStart + oneHour
+  const now = Date.now()
+  const currentHourStart = Math.floor(now / oneHour) * oneHour
+  const lastHourStart = currentHourStart - oneHour
+  const lastHourEnd = currentHourStart // Not lastHourStart + oneHour
+  console.log('now:', Date.now())
+  console.log(
+    'lastHourStart:',
+    lastHourStart,
+    new Date(lastHourStart).toISOString()
+  )
+
+  console.log(
+    `http://localhost:3000/jobs/ingest?dateFrom=${new Date(
+      lastHourStart
+    ).toISOString()}&dateTo=${new Date(lastHourEnd).toISOString()}`
+  )
 
   await fetch(
     `http://localhost:3000/jobs/ingest?dateFrom=${new Date(
@@ -60,6 +74,7 @@ function batchHours(fromTime, toTime) {
       dateTo: new Date(end).toISOString(),
     })
   }
+  console.log('segments to create:', segments.length)
 
   return segments
 }
