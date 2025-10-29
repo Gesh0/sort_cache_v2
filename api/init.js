@@ -1,23 +1,28 @@
 import { pool } from './db.js'
 
-// ----------------------------------------
-// Bootstrap Functions (Testing Only)
-// ----------------------------------------
 export async function bootstrapIngest() {
-  const hasJobs = await pool.query(`SELECT EXISTS(SELECT 1 FROM job_queue WHERE type = 'ingest')`)
+  const hasJobs = await pool.query(
+    `SELECT EXISTS(SELECT 1 FROM job_queue WHERE type = 'ingest')`
+  )
   if (hasJobs.rows[0].exists) {
     return console.log('bootstrap: jobs exist, skipping')
   }
 
-  // Testing data timeframe
-  const dateFrom = '2025-10-28T10:00:00.00Z'
-  const dateTo = '2025-10-28T11:00:00.00Z'
+  const oneHour = 60 * 60 * 1000
+  const lastHourStart = Math.floor(Date.now() / oneHour) * oneHour - oneHour
+  const lastHourEnd = lastHourStart + oneHour
 
-  await fetch(`http://localhost:3000/jobs/ingest?dateFrom=${dateFrom}&dateTo=${dateTo}`)
+  await fetch(
+    `http://localhost:3000/jobs/ingest?dateFrom=${new Date(
+      lastHourStart
+    ).toISOString()}&dateTo=${new Date(lastHourEnd).toISOString()}`
+  )
 }
 
 export async function bootstrapSortmap() {
-  const hasJobs = await pool.query(`SELECT EXISTS(SELECT 1 FROM job_queue WHERE type = 'sort_map')`)
+  const hasJobs = await pool.query(
+    `SELECT EXISTS(SELECT 1 FROM job_queue WHERE type = 'sort_map')`
+  )
   if (hasJobs.rows[0].exists) {
     return console.log('bootstrap: sortmap exists, skipping')
   }
@@ -25,11 +30,7 @@ export async function bootstrapSortmap() {
   await fetch(`http://localhost:3000/jobs/sortmap`)
 }
 
-// ----------------------------------------
-// Production Init Functions
-// ----------------------------------------
-async function getLastJobTime() {
-  // Get latest job's dateTo, using UTC
+async function getLastIngestTime() {
   const result = await pool.query(`
     SELECT (data->>'dateTo')::timestamptz at time zone 'UTC' as last_time
     FROM job_queue
@@ -42,62 +43,87 @@ async function getLastJobTime() {
     throw new Error('No previous jobs found - recovery needed')
   }
 
-  return new Date(result.rows[0].last_time)
+  return new Date(result.rows[0].last_time).getTime()
 }
 
-function generateIngestSegments(lastTime, nowTime) {
+function batchHours(fromTime, toTime) {
   const segments = []
   const oneHour = 60 * 60 * 1000
 
-  // Ensure UTC comparison
-  const utcLastTime = new Date(lastTime.toISOString())
-  const utcNowTime = new Date(nowTime.toISOString())
+  // Round down to hour boundary
+  const startHour = Math.floor(fromTime / oneHour) * oneHour
 
-  let currentFrom = utcLastTime
-
-  while (currentFrom < utcNowTime) {
-    const currentTo = new Date(
-      Math.min(currentFrom.getTime() + oneHour, utcNowTime.getTime())
-    )
-
+  for (let start = startHour; start < toTime; start += oneHour) {
+    const end = start + oneHour
     segments.push({
-      dateFrom: currentFrom.toISOString(),
-      dateTo: currentTo.toISOString(),
+      dateFrom: new Date(start).toISOString(),
+      dateTo: new Date(end).toISOString(),
     })
-
-    currentFrom = currentTo
   }
 
   return segments
 }
 
+function msUntilNextHour() {
+  const now = Date.now()
+  const oneHour = 60 * 60 * 1000
+  const nextHour = Math.ceil(now / oneHour) * oneHour
+  return nextHour - now
+}
+
+async function queueHourlyJob() {
+  const now = Date.now()
+  const oneHour = 60 * 60 * 1000
+  const lastHourStart = Math.floor(now / oneHour) * oneHour - oneHour
+  const lastHourEnd = lastHourStart + oneHour
+
+  await pool.query(`INSERT INTO job_queue (type, data) VALUES ('ingest', $1)`, [
+    JSON.stringify({
+      dateFrom: new Date(lastHourStart).toISOString(),
+      dateTo: new Date(lastHourEnd).toISOString(),
+    }),
+  ])
+
+  console.log(
+    `timer: queued ${new Date(lastHourStart).toISOString()} to ${new Date(
+      lastHourEnd
+    ).toISOString()}`
+  )
+}
+
+function scheduleTimer() {
+  setTimeout(async () => {
+    await queueHourlyJob()
+    scheduleTimer()
+  }, msUntilNextHour())
+}
+
 export async function initIngest() {
   try {
-    const lastTime = await getLastJobTime()
-    const nowTime = new Date() // Will be converted to UTC in generateIngestSegments
-    const segments = generateIngestSegments(lastTime, nowTime)
+    const lastTime = await getLastIngestTime()
+    const segments = batchHours(lastTime, Date.now())
 
     if (segments.length === 0) {
-      return console.log('init: no new segments needed')
+      console.log('init: no missing hours')
+    } else {
+      const values = segments.map((_, i) => `('ingest', $${i + 1})`).join(', ')
+      const params = segments.map((s) => JSON.stringify(s))
+
+      await pool.query(
+        `INSERT INTO job_queue (type, data) VALUES ${values}`,
+        params
+      )
+
+      console.log(`init: queued ${segments.length} hour(s)`)
     }
 
-    // Bulk insert all segments
-    const values = segments
-      .map((_, i) => `($${i * 2 + 1}, $${i * 2 + 2})`)
-      .join(',')
-    const params = segments.flatMap((s) => ['ingest', JSON.stringify(s)])
-
-    await pool.query(
-      `INSERT INTO job_queue (type, data) VALUES ${values}`,
-      params
-    )
+    scheduleTimer()
+    console.log(`timer: scheduled for next hour boundary`)
   } catch (error) {
     if (error.message === 'No previous jobs found - recovery needed') {
       console.error('Recovery needed - no previous state found')
-      // Here you would trigger recovery process
       return
     }
     throw error
   }
 }
-

@@ -17,7 +17,9 @@
 - [X] Revamp queue logic < // loop on no data double execution jobs 
 - [X] init 
 - [X] hourly jobs
-- [ ] refactor hourly
-- [ ] in memory timer 
-- [ ] TEST 2
+- [X] refactor hourly
+- [X] in memory timer 
+- [ ] ENV + Bootstrap refactor 18:00
+- [ ] PRELIM TEST memory timer + real api + real data 19:00 - 21:00
+- [ ] overnight test 21:00 - 09:00
 - [ ] register scanned parcels
