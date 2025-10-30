@@ -21,5 +21,5 @@ export function toAPIFormat(timestamp) {
 }
 
 export function fromAPIFormat(tzString) {
-  return new Date(tzString).toISOString()
+  return new Date(tzString).toISOString() 
 }

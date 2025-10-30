@@ -1,7 +1,6 @@
 import { pool } from '../db.js'
 import { toAPIFormat, fromAPIFormat } from '../utils.js'
 
-
 export default async function () {
   const client = await pool.connect()
   await client.query('LISTEN ingest_worker')
@@ -21,13 +20,17 @@ export default async function () {
     const response = await fetch(url.toString())
 
     const items = await response.json()
+    if (items.length === 0) {
+      console.log('worker got no data XD')
+      return
+    }
 
     const values = items.map((item) => [
       job_id,
       item.serialNumber,
       item.logisticsPointId,
       item.logisticsPointName,
-      fromAPIFormat(item.updatedAt,)
+      fromAPIFormat(item.updatedAt),
     ])
 
     await client.query(

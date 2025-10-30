@@ -27,7 +27,7 @@
 - [ ] register scanned parcels
 ---
 - [X] unified timestamps
-- [ ] ghost removal
+- [X] ghost removal
 - [ ] connection checks
 - [ ] error handling
 - [ ] batch overlap

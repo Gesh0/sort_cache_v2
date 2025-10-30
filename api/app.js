@@ -31,7 +31,7 @@ app.use('/data', dataRoutes)
 
 app.listen(3000, async () => {
   console.log('Server running on http://localhost:3000')
-  await bootstrapSortmap()
-  await bootstrapIngest()
-  // initIngest()
+  // await bootstrapSortmap()
+  // await bootstrapIngest()
+  initIngest()
 })

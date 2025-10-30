@@ -20,12 +20,9 @@ router.get('/:type', (req, res) => {
   const from = dateFrom ? new Date(dateFrom).getTime() : null
   const to = dateTo ? new Date(dateTo).getTime() : null
 
-  console.log('Filter range:', from, 'to', to)
-
   const filtered = data.filter(({ updatedAt }) => {
     const timestamp = new Date(updatedAt).getTime()
     const passes = (!from || timestamp >= from) && (!to || timestamp <= to)
-    console.log('Item:', updatedAt, '→', timestamp, 'passes:', passes)
     return passes
   })
 
