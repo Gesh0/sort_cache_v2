@@ -26,8 +26,8 @@
 - [ ] overnight test 21:00 - 09:00
 - [ ] register scanned parcels
 ---
-- [ ] ghost removal
 - [ ] unified timestamps
+- [ ] ghost removal
 - [ ] connection checks
 - [ ] error handling
 - [ ] batch overlap

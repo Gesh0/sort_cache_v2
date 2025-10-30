@@ -12,9 +12,17 @@ export default async function () {
     const { job_id, data } = JSON.parse(msg.payload)
     const { dateFrom, dateTo } = data
 
+    function toTZString(isoString) {
+      const date = new Date(isoString) // 11:40 
+      const tzOffset = -2 * 60 // +02:00 in minutes
+      const localTime = new Date(date.getTime() - (tzOffset * 60 * 1000))
+      const formatted = localTime.toISOString().slice(0, -1) + '+02:00'
+      return formatted
+    }
+
     const url = new URL('http://localhost:3000/data/mock')
-    url.searchParams.set('dateFrom', dateFrom)
-    url.searchParams.set('dateTo', dateTo)
+    url.searchParams.set('dateFrom', toTZString(dateFrom))
+    url.searchParams.set('dateTo', toTZString(dateTo))
     console.log(url.toString())
     const response = await fetch(url.toString())
 

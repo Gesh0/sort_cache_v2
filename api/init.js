@@ -1,5 +1,13 @@
 import { pool } from './db.js'
 
+function toLocalISOString(timestamp) {
+  const date = new Date(timestamp)
+  const tzOffset = -2 * 60 // +02:00 in minutes
+  const localTime = new Date(date.getTime() - (tzOffset * 60 * 1000))
+  const isoString = localTime.toISOString().slice(0, -1) // Remove 'Z'
+  return isoString + '+02:00'
+}
+
 export async function bootstrapIngest() {
   const hasJobs = await pool.query(
     `SELECT EXISTS(SELECT 1 FROM job_queue WHERE type = 'ingest')`
@@ -8,29 +16,19 @@ export async function bootstrapIngest() {
     return console.log('bootstrap: jobs exist, skipping')
   }
 
-  const oneHour = 60 * 60 * 1000
   const now = Date.now()
-  const currentHourStart = Math.floor(now / oneHour) * oneHour
-  const lastHourStart = currentHourStart - oneHour
-  const lastHourEnd = currentHourStart // Not lastHourStart + oneHour
-  console.log('now:', Date.now())
-  console.log(
-    'lastHourStart:',
-    lastHourStart,
-    new Date(lastHourStart).toISOString()
-  )
-
-  console.log(
-    `http://localhost:3000/jobs/ingest?dateFrom=${new Date(
-      lastHourStart
-    ).toISOString()}&dateTo=${new Date(lastHourEnd).toISOString()}`
-  )
-
-  await fetch(
-    `http://localhost:3000/jobs/ingest?dateFrom=${new Date(
-      lastHourStart
-    ).toISOString()}&dateTo=${new Date(lastHourEnd).toISOString()}`
-  )
+  const oneHour = 60 * 60 * 1000
+  const twoHoursAgo = now - 2 * oneHour
+  const targetHourStart = Math.floor(twoHoursAgo / oneHour) * oneHour
+  const targetHourEnd = targetHourStart + oneHour
+  
+  const dateFrom = toLocalISOString(targetHourStart)
+  const dateTo = toLocalISOString(targetHourEnd)
+  
+  const url = `http://localhost:3000/jobs/ingest?dateFrom=${encodeURIComponent(dateFrom)}&dateTo=${encodeURIComponent(dateTo)}`
+  
+  console.log(url)
+  await fetch(url)
 }
 
 export async function bootstrapSortmap() {
