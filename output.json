@@ -192,22 +192,10 @@
     "updatedAt": "2025-10-25T15:07:48+02:00"
   },
   {
-    "serialNumber": "ELS3644586683MK",
-    "logisticsPointId": 2,
-    "logisticsPointName": "011 - \u0426\u0435\u043d\u0442\u0430\u0440 - 070 243 557",
-    "updatedAt": "2025-10-25T15:07:49+02:00"
-  },
-  {
     "serialNumber": "ELS4596425382MK",
     "logisticsPointId": 4,
     "logisticsPointName": "013 - \u041a\u0435\u0458 - 070394627",
     "updatedAt": "2025-10-25T15:07:49+02:00"
-  },
-  {
-    "serialNumber": "ANA0001156463",
-    "logisticsPointId": 25,
-    "logisticsPointName": "072 - \u0403\u043e\u0440\u0447\u0435 \u041f\u0435\u0442\u0440\u043e\u0432 - 070341520",
-    "updatedAt": "2025-10-25T15:07:50+02:00"
   },
   {
     "serialNumber": "ELT00776082MK",
@@ -1182,12 +1170,6 @@
     "updatedAt": "2025-10-25T15:31:28+02:00"
   },
   {
-    "serialNumber": "000254318101001",
-    "logisticsPointId": 14,
-    "logisticsPointName": "041 - \u0410\u0432\u0442\u043e\u043a\u043e\u043c\u0430\u043d\u0434\u0430 1 - 078452768",
-    "updatedAt": "2025-10-25T15:31:30+02:00"
-  },
-  {
     "serialNumber": "000254317806001",
     "logisticsPointId": 14,
     "logisticsPointName": "041 - \u0410\u0432\u0442\u043e\u043a\u043e\u043c\u0430\u043d\u0434\u0430 1 - 078452768",
@@ -1201,18 +1183,6 @@
   },
   {
     "serialNumber": "000254297234001",
-    "logisticsPointId": 14,
-    "logisticsPointName": "041 - \u0410\u0432\u0442\u043e\u043a\u043e\u043c\u0430\u043d\u0434\u0430 1 - 078452768",
-    "updatedAt": "2025-10-25T15:31:32+02:00"
-  },
-  {
-    "serialNumber": "000254301125001",
-    "logisticsPointId": 14,
-    "logisticsPointName": "041 - \u0410\u0432\u0442\u043e\u043a\u043e\u043c\u0430\u043d\u0434\u0430 1 - 078452768",
-    "updatedAt": "2025-10-25T15:31:32+02:00"
-  },
-  {
-    "serialNumber": "000254301142001",
     "logisticsPointId": 14,
     "logisticsPointName": "041 - \u0410\u0432\u0442\u043e\u043a\u043e\u043c\u0430\u043d\u0434\u0430 1 - 078452768",
     "updatedAt": "2025-10-25T15:31:32+02:00"
@@ -1258,12 +1228,6 @@
     "logisticsPointId": 28,
     "logisticsPointName": "081 - \u0418\u043b\u0438\u043d\u0434\u0435\u043d - 070341274",
     "updatedAt": "2025-10-25T15:33:02+02:00"
-  },
-  {
-    "serialNumber": "ANA0001156464",
-    "logisticsPointId": 30,
-    "logisticsPointName": "101 - \u0422\u0435\u0442\u043e\u0432\u043e 1 - 076490335",
-    "updatedAt": "2025-10-25T15:34:20+02:00"
   },
   {
     "serialNumber": "ELSA0125102400656",
@@ -1590,12 +1554,6 @@
     "updatedAt": "2025-10-25T15:48:13+02:00"
   },
   {
-    "serialNumber": "ELS1121722116MK",
-    "logisticsPointId": 40,
-    "logisticsPointName": "141 - \u0421\u0442\u0440\u0443\u0433\u0430 1 - 070341496",
-    "updatedAt": "2025-10-25T15:50:43+02:00"
-  },
-  {
     "serialNumber": "ELS6155066719MK",
     "logisticsPointId": 46,
     "logisticsPointName": "201 - \u0412\u0435\u043b\u0435\u0441 1 - 070354341",
@@ -1614,12 +1572,6 @@
     "updatedAt": "2025-10-25T15:51:39+02:00"
   },
   {
-    "serialNumber": "ELS3196302413MK",
-    "logisticsPointId": 68,
-    "logisticsPointName": "323 - \u0428\u0442\u0438\u043f 1 - 070388628",
-    "updatedAt": "2025-10-25T15:51:40+02:00"
-  },
-  {
     "serialNumber": "ELT00775123MK",
     "logisticsPointId": 46,
     "logisticsPointName": "201 - \u0412\u0435\u043b\u0435\u0441 1 - 070354341",
@@ -1632,12 +1584,6 @@
     "updatedAt": "2025-10-25T15:51:43+02:00"
   },
   {
-    "serialNumber": "ELS2587554606MK",
-    "logisticsPointId": 68,
-    "logisticsPointName": "323 - \u0428\u0442\u0438\u043f 1 - 070388628",
-    "updatedAt": "2025-10-25T15:51:44+02:00"
-  },
-  {
     "serialNumber": "ELS2413883863MK",
     "logisticsPointId": 46,
     "logisticsPointName": "201 - \u0412\u0435\u043b\u0435\u0441 1 - 070354341",
@@ -1648,12 +1594,6 @@
     "logisticsPointId": 46,
     "logisticsPointName": "201 - \u0412\u0435\u043b\u0435\u0441 1 - 070354341",
     "updatedAt": "2025-10-25T15:51:47+02:00"
-  },
-  {
-    "serialNumber": "ELSA0125102400026",
-    "logisticsPointId": 68,
-    "logisticsPointName": "323 - \u0428\u0442\u0438\u043f 1 - 070388628",
-    "updatedAt": "2025-10-25T15:51:49+02:00"
   },
   {
     "serialNumber": "ELSOA25102400197",
@@ -1674,12 +1614,6 @@
     "updatedAt": "2025-10-25T15:51:52+02:00"
   },
   {
-    "serialNumber": "1001571845",
-    "logisticsPointId": 68,
-    "logisticsPointName": "323 - \u0428\u0442\u0438\u043f 1 - 070388628",
-    "updatedAt": "2025-10-25T15:51:53+02:00"
-  },
-  {
     "serialNumber": "ELSOA25100700084",
     "logisticsPointId": 46,
     "logisticsPointName": "201 - \u0412\u0435\u043b\u0435\u0441 1 - 070354341",
@@ -1690,12 +1624,6 @@
     "logisticsPointId": 46,
     "logisticsPointName": "201 - \u0412\u0435\u043b\u0435\u0441 1 - 070354341",
     "updatedAt": "2025-10-25T15:51:56+02:00"
-  },
-  {
-    "serialNumber": "ELSA0125102400701",
-    "logisticsPointId": 68,
-    "logisticsPointName": "323 - \u0428\u0442\u0438\u043f 1 - 070388628",
-    "updatedAt": "2025-10-25T15:51:57+02:00"
   },
   {
     "serialNumber": "ELSOA25102200543",
@@ -1716,12 +1644,6 @@
     "updatedAt": "2025-10-25T15:52:01+02:00"
   },
   {
-    "serialNumber": "4025015393",
-    "logisticsPointId": 68,
-    "logisticsPointName": "323 - \u0428\u0442\u0438\u043f 1 - 070388628",
-    "updatedAt": "2025-10-25T15:52:02+02:00"
-  },
-  {
     "serialNumber": "ELSOA25102200157",
     "logisticsPointId": 46,
     "logisticsPointName": "201 - \u0412\u0435\u043b\u0435\u0441 1 - 070354341",
@@ -1732,42 +1654,6 @@
     "logisticsPointId": 46,
     "logisticsPointName": "201 - \u0412\u0435\u043b\u0435\u0441 1 - 070354341",
     "updatedAt": "2025-10-25T15:52:05+02:00"
-  },
-  {
-    "serialNumber": "1001571846",
-    "logisticsPointId": 68,
-    "logisticsPointName": "323 - \u0428\u0442\u0438\u043f 1 - 070388628",
-    "updatedAt": "2025-10-25T15:52:06+02:00"
-  },
-  {
-    "serialNumber": "4062163611",
-    "logisticsPointId": 68,
-    "logisticsPointName": "323 - \u0428\u0442\u0438\u043f 1 - 070388628",
-    "updatedAt": "2025-10-25T15:52:21+02:00"
-  },
-  {
-    "serialNumber": "ELS8787693305MK",
-    "logisticsPointId": 68,
-    "logisticsPointName": "323 - \u0428\u0442\u0438\u043f 1 - 070388628",
-    "updatedAt": "2025-10-25T15:52:26+02:00"
-  },
-  {
-    "serialNumber": "SM026112325",
-    "logisticsPointId": 68,
-    "logisticsPointName": "323 - \u0428\u0442\u0438\u043f 1 - 070388628",
-    "updatedAt": "2025-10-25T15:52:30+02:00"
-  },
-  {
-    "serialNumber": "4062163846",
-    "logisticsPointId": 68,
-    "logisticsPointName": "323 - \u0428\u0442\u0438\u043f 1 - 070388628",
-    "updatedAt": "2025-10-25T15:52:35+02:00"
-  },
-  {
-    "serialNumber": "ELS7203013801MK",
-    "logisticsPointId": 68,
-    "logisticsPointName": "323 - \u0428\u0442\u0438\u043f 1 - 070388628",
-    "updatedAt": "2025-10-25T15:52:39+02:00"
   },
   {
     "serialNumber": "ELSA0125102200379",
@@ -2254,11 +2140,5 @@
     "logisticsPointId": 40,
     "logisticsPointName": "141 - \u0421\u0442\u0440\u0443\u0433\u0430 1 - 070341496",
     "updatedAt": "2025-10-25T15:59:09+02:00"
-  },
-  {
-    "serialNumber": "ELSRD5505511123MK",
-    "logisticsPointId": 8,
-    "logisticsPointName": "022 - \u041a\u0430\u0440\u043f\u043e\u0448 3 - 070285775",
-    "updatedAt": "2025-10-25T15:59:47+02:00"
   }
 ]

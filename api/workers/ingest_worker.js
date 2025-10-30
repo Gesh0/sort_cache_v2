@@ -1,4 +1,6 @@
 import { pool } from '../db.js'
+import { toAPIFormat, fromAPIFormat } from '../utils.js'
+
 
 export default async function () {
   const client = await pool.connect()
@@ -12,17 +14,9 @@ export default async function () {
     const { job_id, data } = JSON.parse(msg.payload)
     const { dateFrom, dateTo } = data
 
-    function toTZString(isoString) {
-      const date = new Date(isoString) // 11:40 
-      const tzOffset = -2 * 60 // +02:00 in minutes
-      const localTime = new Date(date.getTime() - (tzOffset * 60 * 1000))
-      const formatted = localTime.toISOString().slice(0, -1) + '+02:00'
-      return formatted
-    }
-
     const url = new URL('http://localhost:3000/data/mock')
-    url.searchParams.set('dateFrom', toTZString(dateFrom))
-    url.searchParams.set('dateTo', toTZString(dateTo))
+    url.searchParams.set('dateFrom', toAPIFormat(dateFrom))
+    url.searchParams.set('dateTo', toAPIFormat(dateTo))
     console.log(url.toString())
     const response = await fetch(url.toString())
 
@@ -33,7 +27,7 @@ export default async function () {
       item.serialNumber,
       item.logisticsPointId,
       item.logisticsPointName,
-      item.updatedAt,
+      fromAPIFormat(item.updatedAt,)
     ])
 
     await client.query(

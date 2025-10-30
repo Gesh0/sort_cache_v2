@@ -26,7 +26,7 @@
 - [ ] overnight test 21:00 - 09:00
 - [ ] register scanned parcels
 ---
-- [ ] unified timestamps
+- [X] unified timestamps
 - [ ] ghost removal
 - [ ] connection checks
 - [ ] error handling
