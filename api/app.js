@@ -1,37 +1,51 @@
-//
 import express from 'express'
-const app = express()
-//
 import ingest_worker from './workers/ingest_worker.js'
-//
 import queryRoutes from './routes/queryRoutes.js'
 import jobsRoutes from './routes/jobsRoutes.js'
 import dataRoutes from './routes/dataRoutes.js'
-import cacheRoute from './routes/cacheRoute.js'
-//
-import { initIngest, bootstrapIngest, bootstrapSortmap } from './init.js'
+import { initCacheRoute } from './routes/cacheRoute.js'
+import { initIngest, bootstrapIngest, bootstrapSortmap } from './scheduler.js'
+import { logOperation } from './utils/logger.js'
 
+const app = express()
 app.use(express.json())
 
-// TESTING UTILS
-app.use('/query', queryRoutes)
-app.use('/jobs', jobsRoutes)
+async function startServer() {
+  const testMode = process.env.TEST_MODE || 'normal'
+  const log = logOperation('startup', { testMode }, 'app')
 
-// init ingest worker
-await ingest_worker()
+  try {
+    // 1. Initialize worker (LISTEN for jobs)
+    await ingest_worker()
 
-// init
-// async race condition on preload ei init starts before bootstrap finishes
+    // 2. Initialize cache route (LISTEN for cache updates, load initial cache)
+    const cacheRoute = await initCacheRoute()
 
-// cache endpoint
-app.use('/cache', cacheRoute)
+    // 3. Mount routes
+    app.use('/query', queryRoutes)
+    app.use('/jobs', jobsRoutes)
+    app.use('/cache', cacheRoute)
+    app.use('/data', dataRoutes)
 
-// FAKE EXTERNAL API
-app.use('/data', dataRoutes)
+    // 4. Start HTTP server
+    app.listen(3000, async () => {
+      // 5. Initialize based on test mode
+      if (testMode === 'bootstrap') {
+        await bootstrapSortmap()
+        await bootstrapIngest()
+        log.success({ port: 3000, mode: 'bootstrap', reason: 'bootstrap_only' })
+      } else if (testMode === 'init') {
+        initIngest()
+        log.success({ port: 3000, mode: 'init', reason: 'catchup_and_timer' })
+      } else {
+        // Normal production mode - do nothing, manual control
+        log.success({ port: 3000, mode: 'normal', reason: 'manual_control' })
+      }
+    })
+  } catch (error) {
+    log.failure(error)
+    process.exit(1)
+  }
+}
 
-app.listen(3000, async () => {
-  console.log('Server running on http://localhost:3000')
-  // await bootstrapSortmap()
-  // await bootstrapIngest()
-  initIngest()
-})
+startServer()

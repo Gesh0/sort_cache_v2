@@ -37,10 +37,11 @@ services:
 
   api:
     build:
-      context: ../api            
+      context: ../api
       dockerfile: ../docker/api.dockerfile
     volumes:
-    - ../api:/app
+      - ../api:/app
+      - api_logs:/var/log/app
     depends_on:
       - db
     ports:
@@ -50,6 +51,20 @@ services:
       DB_USER: sort_cache
       DB_PASS: pass_pass_pass
       DB_NAME: sort_cache_db
+      USE_AUTH: "false"
+      API_URL: "http://localhost:3000/data/mock"
+      API_CLIENT_ID: "6605606e9f6bae01522f1b829e9f2324"
+      API_CLIENT_SECRET: "de027eb49c9c6febcca1711e8bd73687"
+      API_USERNAME: "test.sort"
+      API_PASSWORD: "Pf82ZSrTx$csr"
+      TEST_MODE: "bootstrap"
+      MOCK_DYNAMIC_DATES: "true"
+      BOOTSTRAP_HOURS_BACK: "2"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   ui:
     build:
@@ -61,3 +76,4 @@ services:
 volumes:
   db_data:
   pgadmin_data:
+  api_logs:

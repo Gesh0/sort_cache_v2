@@ -1,84 +1,111 @@
-import { pool } from '../db.js'
-import { toAPIFormat, fromAPIFormat, fetchWithRetry } from '../utils.js'
+import { pool } from '../utils/db.js'
+import { toAPIFormat, fromAPIFormat } from '../utils/timestamps.js'
+import { fetchWithRetry } from '../utils/network.js'
+import { logOperation } from '../utils/logger.js'
 
 export default async function () {
-  const client = await pool.connect()
-  await client.query('LISTEN ingest_worker')
-  let lastJob = Date.now()
+  const initLog = logOperation('init', {}, 'ingest_worker')
 
-  client.on('notification', async (msg) => {
-    lastJob = Date.now()
+  try {
+    const client = await pool.connect()
+    await client.query('LISTEN ingest_worker')
+    let lastJob = Date.now()
 
     setInterval(() => {
-      if (Date.now() - lastJob > 90 * 60 * 1000) {
-        console.error('No jobs for 90 minutes, worker may be disconnected')
-        process.exit(1)
+      const timeSinceLastJob = Date.now() - lastJob
+      if (timeSinceLastJob > 90 * 60 * 1000) {
+        const healthLog = logOperation(
+          'healthCheck',
+          {
+            timeSinceLastJob: Math.floor(timeSinceLastJob / 60000),
+            reason: 'LISTEN_connection_broken',
+          },
+          'ingest_worker'
+        )
+        healthLog.failure(
+          new Error('No jobs for 90 minutes - LISTEN connection may be broken')
+        )
       }
-    }, 10 * 60 * 1000) // Check every 10 m
+    }, 10 * 60 * 1000)
 
-    if (msg.channel !== 'ingest_worker') return
+    initLog.success()
 
-    console.log(msg.payload)
+    client.on('notification', async (msg) => {
+      if (msg.channel !== 'ingest_worker') {
+        const ignoreLog = logOperation(
+          'notification',
+          { channel: msg.channel, reason: 'wrong_channel' },
+          'ingest_worker'
+        )
+        ignoreLog.success({ action: 'ignored' })
+        return
+      }
 
-    const { job_id, data } = JSON.parse(msg.payload)
-    const { dateFrom, dateTo } = data
-
-    const url = new URL('http://localhost:3000/data/mock')
-    url.searchParams.set('dateFrom', toAPIFormat(dateFrom))
-    url.searchParams.set('dateTo', toAPIFormat(dateTo))
-
-    console.log('Fetching:', url.toString())
-
-    const result = await fetchWithRetry(url.toString())
-
-    if (!result.success) {
-      console.error(`Job ${job_id} failed after all retries:`, result.error)
-      // Update job status to failed
-      await pool.query(`UPDATE job_queue SET status = 'failed' WHERE id = $1`, [
+      lastJob = Date.now()
+      const {
         job_id,
-      ])
-      return
-    }
+        data: { dateFrom, dateTo },
+      } = JSON.parse(msg.payload)
 
-    const items = result.data
-
-    if (items.length === 0) {
-      console.log('Worker got no data (empty response)')
-      // Mark job as completed but log it
-      await pool.query(
-        `UPDATE job_queue SET status = 'completed' WHERE id = $1`,
-        [job_id]
+      const jobLog = logOperation(
+        'processJob',
+        { job_id, dateFrom, dateTo },
+        'ingest_worker'
       )
-      return
-    }
 
-    const values = items.map((item) => [
-      job_id,
-      item.serialNumber,
-      item.logisticsPointId,
-      item.logisticsPointName,
-      fromAPIFormat(item.updatedAt),
-    ])
+      try {
+        const apiUrl = process.env.API_URL || 'http://localhost:3000/data/mock'
+        const useAuth = process.env.USE_AUTH === 'true'
+        const endpoint = useAuth ? 'https://api.els.mk/v2/orders/sort' : apiUrl
 
-    await client.query(
-      `INSERT INTO ingest_raw (job_ref, serial_number, logistics_point_id, logistics_point_name, updated_at)
-       SELECT * FROM unnest($1::int[], $2::text[], $3::int[], $4::text[], $5::timestamptz[])`,
-      [
-        values.map((v) => v[0]),
-        values.map((v) => v[1]),
-        values.map((v) => v[2]),
-        values.map((v) => v[3]),
-        values.map((v) => v[4]),
-      ]
-    )
-    console.log(
-      `Job ${job_id} completed successfully, inserted ${items.length} items`
-    )
-  })
-  setInterval(() => {
-    if (Date.now() - lastJob > 90 * 60 * 1000) {
-      console.error('No jobs for 90 minutes, worker may be disconnected')
-      process.exit(1)
-    }
-  }, 10 * 60 * 1000)
+        const url = new URL(endpoint)
+        url.searchParams.set('dateFrom', toAPIFormat(dateFrom))
+        url.searchParams.set('dateTo', toAPIFormat(dateTo))
+
+        const result = await fetchWithRetry(
+          url.toString(),
+          'ingest_worker.processJob',
+          5,
+          useAuth
+        )
+
+        if (!result.success) {
+          jobLog.failure(
+            new Error(`Fetch failed after retries: ${result.error}`)
+          )
+          return
+        }
+
+        if (result.data.length === 0) {
+          jobLog.success({
+            job_id,
+            inserted: 0,
+            reason: 'no_data_in_timeframe',
+          })
+          return
+        }
+
+        const items = result.data.map((item) => [
+          job_id,
+          item.serialNumber,
+          item.logisticsPointId,
+          item.logisticsPointName,
+          fromAPIFormat(item.updatedAt),
+        ])
+
+        await client.query(
+          `INSERT INTO ingest_raw (job_ref, serial_number, logistics_point_id, logistics_point_name, updated_at)
+           SELECT * FROM unnest($1::int[], $2::text[], $3::int[], $4::text[], $5::timestamptz[])`,
+          [0, 1, 2, 3, 4].map((i) => items.map((v) => v[i]))
+        )
+
+        jobLog.success({ job_id, inserted: items.length })
+      } catch (error) {
+        jobLog.failure(error)
+      }
+    })
+  } catch (error) {
+    initLog.failure(error)
+    throw error
+  }
 }

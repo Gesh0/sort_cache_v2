@@ -1,5 +1,5 @@
-import sort_map from '../data/sort_map.js'
-import { pool } from '../db.js'
+import sort_map from '../data/mock.js'
+import { pool } from '../utils/db.js'
 
 import express from 'express'
 const router = express.Router()
