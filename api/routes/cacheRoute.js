@@ -2,8 +2,10 @@ import express from 'express'
 import { pool } from '../db.js'
 
 const router = express.Router()
+
 let cache = new Map()
 let ready = false
+let cacheTimeout = null
 
 async function refreshCache() {
   const { rows } = await pool.query(`
@@ -11,8 +13,17 @@ async function refreshCache() {
     FROM derived_cache
     WHERE id IN (SELECT MAX(id) FROM derived_cache GROUP BY serial_number)
   `)
-  cache = new Map(rows.map(r => [r.serial_number, r.port]))
+  cache = new Map(rows.map((r) => [r.serial_number, r.port]))
   ready = true
+
+  // Reset 75-minute timeout
+  if (cacheTimeout) clearTimeout(cacheTimeout)
+  cacheTimeout = setTimeout(() => {
+    ready = false
+    console.log('Cache expired (no updates for 75 minutes)')
+  }, 75 * 60 * 1000)
+
+  console.log(`Cache refreshed with ${rows.length} items`)
 }
 
 async function initCache() {
@@ -27,16 +38,16 @@ async function initCache() {
 initCache()
 
 router.get('/:barcode', async (req, res) => {
-  if (!ready) return res.status(503).json({ error: 'Cache not ready' })
-  
+  if (!ready) return res.status(503).json({ error: 'Cache stale' })
+
   const port = cache.get(req.params.barcode)
   if (!port) return res.status(404).json({ error: 'Not found' })
-  
-  pool.query(
-    'INSERT INTO scan_log (serial_number, port) VALUES ($1, $2)',
-    [req.params.barcode, port]
-  )
-  
+
+  pool.query('INSERT INTO scan_log (serial_number, port) VALUES ($1, $2)', [
+    req.params.barcode,
+    port,
+  ])
+
   res.json({ port })
 })
 

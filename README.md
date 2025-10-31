@@ -28,7 +28,8 @@
 ---
 - [X] unified timestamps
 - [X] ghost removal
-- [ ] connection checks
-- [ ] error handling
-- [ ] batch overlap
+- [X] retries + exponential backoff
+- [X] cache safety timer
+- [X] DB health checks
+- [ ] logging
 

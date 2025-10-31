@@ -1,11 +1,21 @@
 import { pool } from '../db.js'
-import { toAPIFormat, fromAPIFormat } from '../utils.js'
+import { toAPIFormat, fromAPIFormat, fetchWithRetry } from '../utils.js'
 
 export default async function () {
   const client = await pool.connect()
   await client.query('LISTEN ingest_worker')
+  let lastJob = Date.now()
 
   client.on('notification', async (msg) => {
+    lastJob = Date.now()
+
+    setInterval(() => {
+      if (Date.now() - lastJob > 90 * 60 * 1000) {
+        console.error('No jobs for 90 minutes, worker may be disconnected')
+        process.exit(1)
+      }
+    }, 10 * 60 * 1000) // Check every 10 m
+
     if (msg.channel !== 'ingest_worker') return
 
     console.log(msg.payload)
@@ -16,12 +26,29 @@ export default async function () {
     const url = new URL('http://localhost:3000/data/mock')
     url.searchParams.set('dateFrom', toAPIFormat(dateFrom))
     url.searchParams.set('dateTo', toAPIFormat(dateTo))
-    console.log(url.toString())
-    const response = await fetch(url.toString())
 
-    const items = await response.json()
+    console.log('Fetching:', url.toString())
+
+    const result = await fetchWithRetry(url.toString())
+
+    if (!result.success) {
+      console.error(`Job ${job_id} failed after all retries:`, result.error)
+      // Update job status to failed
+      await pool.query(`UPDATE job_queue SET status = 'failed' WHERE id = $1`, [
+        job_id,
+      ])
+      return
+    }
+
+    const items = result.data
+
     if (items.length === 0) {
-      console.log('worker got no data XD')
+      console.log('Worker got no data (empty response)')
+      // Mark job as completed but log it
+      await pool.query(
+        `UPDATE job_queue SET status = 'completed' WHERE id = $1`,
+        [job_id]
+      )
       return
     }
 
@@ -44,5 +71,14 @@ export default async function () {
         values.map((v) => v[4]),
       ]
     )
+    console.log(
+      `Job ${job_id} completed successfully, inserted ${items.length} items`
+    )
   })
+  setInterval(() => {
+    if (Date.now() - lastJob > 90 * 60 * 1000) {
+      console.error('No jobs for 90 minutes, worker may be disconnected')
+      process.exit(1)
+    }
+  }, 10 * 60 * 1000)
 }
