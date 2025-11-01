@@ -33,6 +33,6 @@
 - [X] cache safety timer
 - [X] DB health checks
 ---
-- [ ] auth layer for external api
 - [ ] design overnight test
+- [ ] auth layer for external api
 - [ ] register scanned parcels

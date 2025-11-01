@@ -20,3 +20,7 @@ curl -X GET "https://api.els.mk/v2/orders/sort?dateFrom=2025-10-25T15:00:00Z&dat
 
 2025-10-25T15:00:00Z
 2025-10-25T16:00:00Z
+
+curl -X POST http://localhost:3000/jobs/preload \
+  -H "Content-Type: application/json" \
+  -d '{"days": 1, "timeOffsetDays": 0}'

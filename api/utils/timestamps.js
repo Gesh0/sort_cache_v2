@@ -1,9 +1,39 @@
 import { DateTime } from 'luxon'
 
 const TIMEZONE = 'Europe/Skopje'
+let TIME_OFFSET_DAYS = parseInt(process.env.TIME_OFFSET_DAYS || '0')
+
+let timeReference = null
+
+export function setTimeOffset(days) {
+  TIME_OFFSET_DAYS = parseInt(days) || 0
+  timeReference = null // Reset so it rebuilds on next call
+
+  // Trigger rebuild
+  getTimeReference()
+}
+
+function getTimeReference() {
+  if (timeReference) return timeReference
+
+  if (TIME_OFFSET_DAYS > 0) {
+    const offsetDuration = { days: TIME_OFFSET_DAYS }
+    timeReference = () => DateTime.utc().minus(offsetDuration)
+
+    console.warn('╔════════════════════════════════════╗')
+    console.warn('║  TIME OFFSET MODE ACTIVE           ║')
+    console.warn(`║  Offset: ${TIME_OFFSET_DAYS} days in the past        ║`)
+    console.warn(`║  Reference: ${timeReference().toISO()} ║`)
+    console.warn('╚════════════════════════════════════╝')
+  } else {
+    timeReference = () => DateTime.utc()
+  }
+
+  return timeReference
+}
 
 export function utcNow() {
-  return DateTime.utc()
+  return getTimeReference()()
 }
 
 export function parseISO(isoString) {

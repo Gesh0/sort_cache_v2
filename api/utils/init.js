@@ -27,6 +27,27 @@ export async function bootstrapSortmap() {
   await fetch(`http://localhost:3000/jobs/sortmap`)
 }
 
+export async function preloadIngestJobs(days) {
+  const logger = logOperation('PRELOAD INGEST')
+
+  const end = utcNow()
+  const start = end.minus({ days })
+
+  const jobs = batchIngestJobs(start.toISO(), end.toISO())
+
+  logger.success(`Creating ${jobs.length} jobs for ${days} days`)
+
+  const values = jobs.map((_, i) => `('ingest', $${i + 1})`).join(', ')
+  const params = jobs.map((j) => JSON.stringify(j))
+
+  await pool.query(
+    `INSERT INTO job_queue (type, data) VALUES ${values}`,
+    params
+  )
+
+  logger.success(`Preloaded ${jobs.length} jobs from ${start.toISO()} to ${end.toISO()}`)
+}
+
 async function getLastIngestTime() {
   const result = await pool.query(`
     SELECT data->>'dateTo' as last_time
