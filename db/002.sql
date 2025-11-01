@@ -1,5 +1,5 @@
 -- ----------------------------------------------------------------------------
--- Get incomplete jobs (jobs without results)
+-- Get incomplete jobs (jobs without completed/failed events)
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION get_incomplete_jobs(
   p_job_type TEXT,
@@ -12,31 +12,40 @@ BEGIN
   FROM job_queue jq
   WHERE jq.type = p_job_type
     AND (p_max_job_id IS NULL OR jq.id < p_max_job_id)
-    AND CASE
-      WHEN p_job_type = 'ingest' THEN
-        NOT EXISTS (SELECT 1 FROM ingest_acc WHERE job_ref = jq.id)
-      WHEN p_job_type = 'sort_map' THEN
-        NOT EXISTS (SELECT 1 FROM sort_map WHERE job_ref = jq.id)
-    END
+    AND NOT EXISTS (
+      SELECT 1 FROM job_events je
+      WHERE je.job_id = jq.id
+      AND je.event_type IN ('completed', 'failed')
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM job_events je
+      WHERE je.job_id = jq.id
+      AND je.event_type IN ('notified', 'worker_started', 'raw_inserted', 'acc_transformed', 'sortmap_written')
+    )
+    AND (
+      jq.id = 1
+      OR EXISTS (
+        SELECT 1 FROM job_events je
+        WHERE je.job_id = jq.id - 1
+        AND je.event_type = 'completed'
+      )
+    )
   ORDER BY jq.id;
 END;
 $$ LANGUAGE plpgsql;
 
 -- ----------------------------------------------------------------------------
--- Try to acquire lock and process job
--- Returns true if processed, false if lock failed
+-- Process job and log event
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION try_process_job(
-  p_job_type TEXT, 
-  p_job_id INTEGER, 
+  p_job_type TEXT,
+  p_job_id INTEGER,
   p_job_data JSONB
 )
 RETURNS BOOLEAN AS $$
 BEGIN
-  IF NOT pg_try_advisory_xact_lock(p_job_id) THEN
-    RETURN false;
-  END IF;
-  
+  INSERT INTO job_events (job_id, event_type) VALUES (p_job_id, 'notified');
+
   IF p_job_type = 'ingest' THEN
     PERFORM pg_notify('ingest_worker', json_build_object(
       'job_id', p_job_id,
@@ -45,7 +54,7 @@ BEGIN
   ELSIF p_job_type = 'sort_map' THEN
     PERFORM process_sortmap_job(p_job_id);
   END IF;
-  
+
   RETURN true;
 END;
 $$ LANGUAGE plpgsql;

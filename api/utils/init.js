@@ -1,27 +1,7 @@
 import { pool } from '../utils/db.js'
 import { logOperation } from './logger.js'
-import { utcMinus, utcNow, batchIngestJobs, msUntilNextHour } from './timestamps.js'
+import { utcNow, batchIngestJobs, msUntilNextHour } from './timestamps.js'
 
-export async function bootstrapIngest() {
-  const logger = logOperation('BOOTSTRAP INGEST')
-  const hasJobs = await pool.query(
-    `SELECT EXISTS(SELECT 1 FROM job_queue WHERE type = 'ingest')`
-  )
-  if (hasJobs.rows[0].exists)
-    return logger.failure(JSON.stringify(hasJobs.rows[0].exists))
-
-  const jobs = batchIngestJobs(utcMinus(2), utcNow().toISO())
-  const url = `http://localhost:3000/jobs/ingest?dateFrom=${encodeURIComponent(
-    jobs[0].dateFrom
-  )}&dateTo=${encodeURIComponent(jobs[0].dateTo)}`
-
-  try {
-    await fetch(url)
-    logger.success(url)
-  } catch (error) {
-    logger.failure(error)
-  }
-}
 
 export async function bootstrapSortmap() {
   await fetch(`http://localhost:3000/jobs/sortmap`)
@@ -74,12 +54,12 @@ async function queueHourlyJob() {
   ])
 }
 
-// function scheduleTimer() {
-//   setTimeout(async () => {
-//     await queueHourlyJob()
-//     scheduleTimer()
-//   }, msUntilNextHour())
-// }
+function scheduleTimer() {
+  setTimeout(async () => {
+    await queueHourlyJob()
+    scheduleTimer()
+  }, msUntilNextHour())
+}
 
 export async function initIngest() {
   const logger = logOperation('INIT INGEST')
@@ -99,7 +79,7 @@ export async function initIngest() {
       params
     )
 
-    // scheduleTimer()
+    scheduleTimer()
     logger.success(JSON.stringify(segments))
   } catch (error) {
     return logger.failure(error)

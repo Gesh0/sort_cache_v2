@@ -8,7 +8,7 @@ import jobsRoutes from './routes/jobsRoutes.js'
 import dataRoutes from './routes/dataRoutes.js'
 import cacheRoute from './routes/cacheRoute.js'
 
-import { bootstrapIngest, bootstrapSortmap } from './utils/init.js'
+import { bootstrapSortmap, initIngest } from './utils/init.js'
 
 app.use(express.json())
 app.listen(3000, async () => {
@@ -22,5 +22,5 @@ app.listen(3000, async () => {
 
   await bootstrapSortmap()
 
-  await bootstrapIngest()
+  await initIngest()
 })

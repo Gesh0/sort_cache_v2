@@ -49,4 +49,29 @@ CREATE TABLE scan_log (
   serial_number TEXT NOT NULL,
   port INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
-)
+);
+
+CREATE TABLE job_events (
+  id SERIAL PRIMARY KEY,
+  job_id INTEGER REFERENCES job_queue(id),
+  event_type TEXT CHECK (event_type IN (
+    'notified', 'worker_started', 'raw_inserted',
+    'acc_transformed', 'sortmap_written', 'completed', 'failed',
+    'derive_started', 'cache_written', 'derive_completed', 'derive_failed'
+  )),
+  created_at TIMESTAMP DEFAULT NOW(),
+  payload JSONB DEFAULT '{}'
+);
+
+CREATE INDEX idx_job_events_job_id ON job_events(job_id, id DESC);
+CREATE INDEX idx_job_events_type ON job_events(event_type, created_at DESC);
+
+CREATE VIEW job_current_state AS
+SELECT DISTINCT ON (job_id)
+  job_id,
+  event_type as phase,
+  created_at,
+  payload
+FROM job_events
+WHERE job_id IS NOT NULL
+ORDER BY job_id, id DESC;

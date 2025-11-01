@@ -26,6 +26,8 @@ export default async function () {
     const { job_id, data } = JSON.parse(msg.payload)
     const { dateFrom, dateTo } = data
 
+    await pool.query(`INSERT INTO job_events (job_id, event_type) VALUES ($1, 'worker_started')`, [job_id])
+
     const url = new URL('http://localhost:3000/data/')
     url.searchParams.set('dateFrom', toAPIFormat(dateFrom))
     url.searchParams.set('dateTo', toAPIFormat(dateTo))
@@ -35,6 +37,10 @@ export default async function () {
     if (!result.success) {
       console.log('[INGEST WORKER] failed - retry exhausted')
       console.log(JSON.stringify({ dateFrom, dateTo, url: url.toString(), error: result.error }))
+      await pool.query(
+        `INSERT INTO job_events (job_id, event_type, payload) VALUES ($1, 'failed', $2)`,
+        [job_id, JSON.stringify({ error: result.error })]
+      )
       return
     }
 
@@ -59,5 +65,7 @@ export default async function () {
         values.map((v) => v[4]),
       ]
     )
+
+    await pool.query(`INSERT INTO job_events (job_id, event_type) VALUES ($1, 'raw_inserted')`, [job_id])
   })
 }
