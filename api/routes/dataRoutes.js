@@ -1,30 +1,30 @@
-// mock-server.js
 import express from 'express'
 import { DateTime } from 'luxon'
-import mock from '../data/mock.js'
-import real from '../data/real.js'
+import generateDynamic from '../data/dynamic.js'
+import { fromAPIFormat } from '../utils/timestamps.js'
 
 const router = express.Router()
 
-router.get('/:type', (req, res) => {
-  const { type } = req.params
+const twoHoursAgo = DateTime.utc().minus({ hours: 2 }).toISO()
+const now = DateTime.utc().toISO()
+const data = generateDynamic(twoHoursAgo, now)
+console.log(JSON.stringify(data, null, 2))
+
+router.get('/', (req, res) => {
   const { dateFrom, dateTo } = req.query
-  const sources = { mock, real }
-  const data = sources[type]
 
-  if (!data)
-    return res
-      .status(400)
-      .json({ error: 'Invalid type. Use "mock" or "real".' })
+  if (!dateFrom || !dateTo) {
+    return res.status(400).json({ error: 'dateFrom and dateTo required' })
+  }
 
-  // Convert TZ query params to DateTime objects for comparison
-  const from = dateFrom ? DateTime.fromISO(dateFrom) : null
-  const to = dateTo ? DateTime.fromISO(dateTo) : null
+  console.log(`[DATA] request for ${dateFrom} - ${dateTo}`)
+
+  const from = DateTime.fromISO(fromAPIFormat(dateFrom))
+  const to = DateTime.fromISO(fromAPIFormat(dateTo))
 
   const filtered = data.filter(({ updatedAt }) => {
-    const timestamp = DateTime.fromISO(updatedAt)
-    const passes = (!from || timestamp >= from) && (!to || timestamp <= to)
-    return passes
+    const timestamp = DateTime.fromISO(fromAPIFormat(updatedAt))
+    return timestamp >= from && timestamp <= to
   })
 
   res.json(filtered)

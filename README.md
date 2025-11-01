@@ -24,8 +24,10 @@
 - [X] logging
 - [X] unified timestamps
 - [ ] refactor temporal
-  - [ ] refactor temporal
-- [ ] dynamic test data
+  - [X] improve ingest logic
+  - [X] test
+  - [X] dynamic test suite
+  - [ ] centralized logic in utils
 - [ ] auth layer for external api
 - [ ] design overnight test
 - [ ] register scanned parcels
@@ -34,3 +36,8 @@
 - [X] cache safety timer
 - [ ] DB health checks
 
+## INGEST CYCLE BATCHING LOGIC
+
+Leading/Trailing Edge
+
+get latest job range
