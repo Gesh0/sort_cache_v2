@@ -1,17 +1,40 @@
 import { DateTime } from 'luxon'
 
-export function toAPIFormat(timestamp, timezone = 'Europe/Skopje') {
-  const dt = DateTime.fromISO(timestamp, { zone: 'utc' })
-  return dt.setZone(timezone).toISO()
+const TIMEZONE = 'Europe/Skopje'
+
+export function utcNow() {
+  return DateTime.utc()
+}
+
+export function parseISO(isoString) {
+  return DateTime.fromISO(isoString, { zone: 'utc' })
+}
+
+export function utcMinus(hours) {
+  return utcNow().minus({ hours }).toISO()
+}
+
+export function msUntilNextHour() {
+  const now = utcNow()
+  const nextHour = now.plus({ hours: 1 }).startOf('hour')
+  return nextHour.diff(now).milliseconds
+}
+
+export function toAPIFormat(utcISO) {
+  return parseISO(utcISO).setZone(TIMEZONE).toISO()
 }
 
 export function fromAPIFormat(tzString) {
   return DateTime.fromISO(tzString).toUTC().toISO()
 }
 
-export function batchIngestJobs(lastJobEnd, now = DateTime.utc()) {
-  const start = DateTime.fromISO(lastJobEnd, { zone: 'utc' })
-  const end = now
+export function fromAPIFormatDT(tzString) {
+  return DateTime.fromISO(tzString).toUTC()
+}
+
+export function batchIngestJobs(startISO, endISO) {
+  const start = parseISO(startISO)
+  const end = parseISO(endISO)
   const jobs = []
   let current = start
 

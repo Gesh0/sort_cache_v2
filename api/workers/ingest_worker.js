@@ -24,7 +24,7 @@ export default async function () {
     const { job_id, data } = JSON.parse(msg.payload)
     const { dateFrom, dateTo } = data
 
-    const url = new URL('http://localhost:3000/data/mock')
+    const url = new URL('http://localhost:3000/data/')
     url.searchParams.set('dateFrom', toAPIFormat(dateFrom))
     url.searchParams.set('dateTo', toAPIFormat(dateTo))
 

@@ -7,10 +7,10 @@ export default [
     "numeration": "202",
     "port": 3
   },
-  {
-    "numeration": "203",
-    "port": 5
-  },
+  // {
+  //   "numeration": "203",
+  //   "port": 5
+  // },
   {
     "numeration": "001",
     "port": 6

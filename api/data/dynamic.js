@@ -1,4 +1,3 @@
-import { DateTime } from 'luxon'
 import { batchIngestJobs, toAPIFormat } from '../utils/timestamps.js'
 
 const locations = [
@@ -31,7 +30,7 @@ export function generateMockData(dateFrom, dateTo) {
 
   return [
     {
-      serialNumber: "STATIC",
+      serialNumber: 'STATIC',
       logisticsPointId: locations[0].id,
       logisticsPointName: locations[0].name,
       updatedAt: timestamp,
@@ -45,7 +44,7 @@ export function generateMockData(dateFrom, dateTo) {
   ]
 }
 
-export default function (dateFromISO, dateToISO) {
-  const jobs = batchIngestJobs(dateFromISO, DateTime.fromISO(dateToISO, { zone: 'utc' }))
+export default function (startISO, endISO) {
+  const jobs = batchIngestJobs(startISO, endISO)
   return jobs.flatMap((job) => generateMockData(job.dateFrom, job.dateTo))
 }

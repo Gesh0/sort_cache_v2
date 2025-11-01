@@ -15,6 +15,7 @@ export async function fetchWithRetry(url, maxRetries = 5) {
 
       return { success: true, data }
     } catch (error) {
+      console.error(`Fetch attempt ${url}`)
       console.error(`Fetch attempt ${attempt + 1} failed:`, error.message)
 
       if (attempt === maxRetries) {

@@ -23,18 +23,19 @@
 - [X] refactor
 - [X] logging
 - [X] unified timestamps
-- [ ] refactor temporal
+- [X] refactor temporal
   - [X] improve ingest logic
   - [X] test
   - [X] dynamic test suite
-  - [ ] centralized logic in utils
+  - [X] centralized logic in utils
 - [ ] auth layer for external api
-- [ ] design overnight test
-- [ ] register scanned parcels
 ---
 - [X] retries + exponential backoff
 - [X] cache safety timer
 - [ ] DB health checks
+---
+- [ ] design overnight test
+- [ ] register scanned parcels
 
 ## INGEST CYCLE BATCHING LOGIC
 

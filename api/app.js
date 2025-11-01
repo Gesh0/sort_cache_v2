@@ -23,7 +23,7 @@ app.listen(3000, async () => {
 
   await ingest_worker()
 
-  // await bootstrapSortmap()
-  // await bootstrapIngest()
-  // await initIngest()
+  await bootstrapSortmap()
+  await bootstrapIngest()
+  await initIngest()
 })

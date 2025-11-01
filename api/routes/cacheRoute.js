@@ -34,6 +34,12 @@ async function initCache() {
 
 initCache()
 
+
+router.get('/full', async (req, res) => {
+  if (cache.size === 0 ) return console.log('[Cache] empty')
+  res.send(Object.fromEntries(cache))
+})
+
 router.get('/:barcode', async (req, res) => {
   if (!ready) return res.status(503).json({ error: 'Cache stale' })
 
