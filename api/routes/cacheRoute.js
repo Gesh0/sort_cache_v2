@@ -1,5 +1,5 @@
 import express from 'express'
-import { pool } from '../db.js'
+import { pool } from '../utils/db.js'
 
 const router = express.Router()
 
@@ -20,10 +20,7 @@ async function refreshCache() {
   if (cacheTimeout) clearTimeout(cacheTimeout)
   cacheTimeout = setTimeout(() => {
     ready = false
-    console.log('Cache expired (no updates for 75 minutes)')
   }, 75 * 60 * 1000)
-
-  console.log(`Cache refreshed with ${rows.length} items`)
 }
 
 async function initCache() {

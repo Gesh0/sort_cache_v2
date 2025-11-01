@@ -1,5 +1,6 @@
-import { pool } from '../db.js'
-import { toAPIFormat, fromAPIFormat, fetchWithRetry } from '../utils.js'
+import { pool } from '../utils/db.js'
+import { toAPIFormat, fromAPIFormat } from '../utils/timestamps.js'
+import { fetchWithRetry } from '../utils/network.js'
 
 export default async function () {
   const client = await pool.connect()
@@ -27,30 +28,15 @@ export default async function () {
     url.searchParams.set('dateFrom', toAPIFormat(dateFrom))
     url.searchParams.set('dateTo', toAPIFormat(dateTo))
 
-    console.log('Fetching:', url.toString())
-
     const result = await fetchWithRetry(url.toString())
 
-    if (!result.success) {
-      console.error(`Job ${job_id} failed after all retries:`, result.error)
-      // Update job status to failed
-      await pool.query(`UPDATE job_queue SET status = 'failed' WHERE id = $1`, [
-        job_id,
-      ])
+    if (result.length === 0) {
+      console.log('[INGEST WORKER] failed no fetched data')
+      console.log(JSON.stringify({ dateFrom, dateTo, url: url.toString() }))
       return
     }
 
     const items = result.data
-
-    if (items.length === 0) {
-      console.log('Worker got no data (empty response)')
-      // Mark job as completed but log it
-      await pool.query(
-        `UPDATE job_queue SET status = 'completed' WHERE id = $1`,
-        [job_id]
-      )
-      return
-    }
 
     const values = items.map((item) => [
       job_id,
@@ -70,9 +56,6 @@ export default async function () {
         values.map((v) => v[3]),
         values.map((v) => v[4]),
       ]
-    )
-    console.log(
-      `Job ${job_id} completed successfully, inserted ${items.length} items`
     )
   })
   setInterval(() => {

@@ -50,6 +50,12 @@ services:
       DB_USER: sort_cache
       DB_PASS: pass_pass_pass
       DB_NAME: sort_cache_db
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 
   ui:
     build:

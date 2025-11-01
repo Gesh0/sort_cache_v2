@@ -19,17 +19,18 @@
 - [X] hourly jobs
 - [X] refactor hourly
 - [X] in memory timer 
-- [ ] ENV + Bootstrap refactor 18:00
-- [ ] PRELIM TEST memory timer + real api + real data 19:00 - 21:00
-- [ ] error ports
-- [ ] auth for external API
-- [ ] overnight test 21:00 - 09:00
+- [X] ghost removal
+- [X] refactor
+- [X] logging
+- [X] unified timestamps
+- [ ] refactor temporal
+  - [ ] refactor temporal
+- [ ] dynamic test data
+- [ ] auth layer for external api
+- [ ] design overnight test
 - [ ] register scanned parcels
 ---
-- [X] unified timestamps
-- [X] ghost removal
 - [X] retries + exponential backoff
 - [X] cache safety timer
-- [X] DB health checks
-- [ ] logging
+- [ ] DB health checks
 

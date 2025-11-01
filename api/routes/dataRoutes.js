@@ -1,5 +1,6 @@
 // mock-server.js
 import express from 'express'
+import { DateTime } from 'luxon'
 import mock from '../data/mock.js'
 import real from '../data/real.js'
 
@@ -16,17 +17,16 @@ router.get('/:type', (req, res) => {
       .status(400)
       .json({ error: 'Invalid type. Use "mock" or "real".' })
 
-  // Convert TZ query params to Unix timestamps for comparison
-  const from = dateFrom ? new Date(dateFrom).getTime() : null
-  const to = dateTo ? new Date(dateTo).getTime() : null
+  // Convert TZ query params to DateTime objects for comparison
+  const from = dateFrom ? DateTime.fromISO(dateFrom) : null
+  const to = dateTo ? DateTime.fromISO(dateTo) : null
 
   const filtered = data.filter(({ updatedAt }) => {
-    const timestamp = new Date(updatedAt).getTime()
+    const timestamp = DateTime.fromISO(updatedAt)
     const passes = (!from || timestamp >= from) && (!to || timestamp <= to)
     return passes
   })
 
-  console.log('Filtered count:', filtered.length)
   res.json(filtered)
 })
 
