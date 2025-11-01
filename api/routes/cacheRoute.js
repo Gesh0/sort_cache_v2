@@ -1,11 +1,11 @@
 import express from 'express'
 import { pool } from '../utils/db.js'
+import { StalenessTimer } from '../utils/timer.js'
 
 const router = express.Router()
 
 let cache = new Map()
-let ready = false
-let cacheTimeout = null
+const cacheTimer = new StalenessTimer('cache', 80)
 
 async function refreshCache() {
   const { rows } = await pool.query(`
@@ -14,34 +14,43 @@ async function refreshCache() {
     WHERE id IN (SELECT MAX(id) FROM derived_cache GROUP BY serial_number)
   `)
   cache = new Map(rows.map((r) => [r.serial_number, r.port]))
-  ready = true
-
-  // Reset 75-minute timeout
-  if (cacheTimeout) clearTimeout(cacheTimeout)
-  cacheTimeout = setTimeout(() => {
-    ready = false
-  }, 75 * 60 * 1000)
+  cacheTimer.reset()
 }
 
 async function initCache() {
   const client = await pool.connect()
   await client.query('LISTEN load_cache')
+
+  const notifyTimer = new StalenessTimer('cache-notify', 80)
+  notifyTimer.reset()
+
+  setInterval(() => {
+    if (notifyTimer.isStale()) {
+      console.error('[CACHE] No notifications for 80 minutes, connection may be lost')
+      process.exit(1)
+    }
+  }, 10 * 60 * 1000)
+
   client.on('notification', (msg) => {
-    if (msg.channel === 'load_cache') refreshCache()
+    if (msg.channel === 'load_cache') {
+      notifyTimer.reset()
+      refreshCache()
+    }
   })
+
   await refreshCache()
 }
 
 initCache()
 
-
-router.get('/full', async (req, res) => {
-  if (cache.size === 0 ) return console.log('[Cache] empty')
-  res.send(Object.fromEntries(cache))
+router.get('/full', (_req, res) => {
+  if (cacheTimer.isStale()) return res.status(503).json({ error: 'Cache stale' })
+  if (cache.size === 0) return res.json({ error: 'Cache empty' })
+  res.json(Object.fromEntries(cache))
 })
 
 router.get('/:barcode', async (req, res) => {
-  if (!ready) return res.status(503).json({ error: 'Cache stale' })
+  if (cacheTimer.isStale()) return res.status(503).json({ error: 'Cache stale' })
 
   const port = cache.get(req.params.barcode)
   if (!port) return res.status(404).json({ error: 'Not found' })

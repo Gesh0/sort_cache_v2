@@ -28,17 +28,11 @@
   - [X] test
   - [X] dynamic test suite
   - [X] centralized logic in utils
-- [ ] auth layer for external api
 ---
 - [X] retries + exponential backoff
 - [X] cache safety timer
-- [ ] DB health checks
+- [X] DB health checks
 ---
+- [ ] auth layer for external api
 - [ ] design overnight test
 - [ ] register scanned parcels
-
-## INGEST CYCLE BATCHING LOGIC
-
-Leading/Trailing Edge
-
-get latest job range

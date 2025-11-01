@@ -10,8 +10,6 @@ import dataRoutes from './routes/dataRoutes.js'
 import cacheRoute from './routes/cacheRoute.js'
 //
 import { initIngest, bootstrapIngest, bootstrapSortmap } from './utils/init.js'
-import dynamic from './data/dynamic.js'
-import { DateTime } from 'luxon'
 
 app.use(express.json())
 app.listen(3000, async () => {

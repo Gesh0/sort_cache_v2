@@ -1,21 +1,23 @@
 import { pool } from '../utils/db.js'
 import { toAPIFormat, fromAPIFormat } from '../utils/timestamps.js'
 import { fetchWithRetry } from '../utils/network.js'
+import { StalenessTimer } from '../utils/timer.js'
 
 export default async function () {
   const client = await pool.connect()
   await client.query('LISTEN ingest_worker')
-  let lastJob = Date.now()
+  const notifyTimer = new StalenessTimer('notify', 80)
+  notifyTimer.reset()
+
+  setInterval(() => {
+    if (notifyTimer.isStale()) {
+      console.error('[INGEST WORKER] No jobs for 80 minutes, worker may be disconnected')
+      process.exit(1)
+    }
+  }, 10 * 60 * 1000)
 
   client.on('notification', async (msg) => {
-    lastJob = Date.now()
-
-    setInterval(() => {
-      if (Date.now() - lastJob > 90 * 60 * 1000) {
-        console.error('No jobs for 90 minutes, worker may be disconnected')
-        process.exit(1)
-      }
-    }, 10 * 60 * 1000) // Check every 10 m
+    notifyTimer.reset()
 
     if (msg.channel !== 'ingest_worker') return
 
@@ -30,9 +32,9 @@ export default async function () {
 
     const result = await fetchWithRetry(url.toString())
 
-    if (result.length === 0) {
-      console.log('[INGEST WORKER] failed no fetched data')
-      console.log(JSON.stringify({ dateFrom, dateTo, url: url.toString() }))
+    if (!result.success) {
+      console.log('[INGEST WORKER] failed - retry exhausted')
+      console.log(JSON.stringify({ dateFrom, dateTo, url: url.toString(), error: result.error }))
       return
     }
 
@@ -58,10 +60,4 @@ export default async function () {
       ]
     )
   })
-  setInterval(() => {
-    if (Date.now() - lastJob > 90 * 60 * 1000) {
-      console.error('No jobs for 90 minutes, worker may be disconnected')
-      process.exit(1)
-    }
-  }, 10 * 60 * 1000)
 }

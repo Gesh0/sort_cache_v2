@@ -38,7 +38,7 @@ BEGIN
         AND created_at >= NOW() - INTERVAL '7 days'
       )
       -- Filter out ghost parcels (older than 21 days, never scanned)
-      AND ps.updated_at >= NOW() - INTERVAL '21 days'
+      AND ps.created_at >= NOW() - INTERVAL '21 days'
   ),
   merged AS (
     SELECT * FROM active_prev

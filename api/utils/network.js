@@ -1,6 +1,6 @@
 export async function fetchWithRetry(url, maxRetries = 5) {
-  const delays = [60000, 120000, 300000, 600000, 600000] // 1min, 2min, 5min, 10min, 10min
-
+  const delays = [60000, 120000, 240000, 480000, 960000] // 1min, 2min, 4min, 8min, 16min
+  
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const response = await fetch(url, {
