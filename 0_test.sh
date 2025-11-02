@@ -15,12 +15,7 @@ curl -X GET "https://api.els.mk/v2/orders/sort?dateFrom=2025-10-25T17%3A00%3A00%
 curl -X GET "https://api.els.mk/v2/orders/sort?dateFrom=2025-10-25T15:00:00Z&dateTo=2025-10-25T16:00:00Z" \
   -H "Authorization: Bearer 7d1d06690de109e58c224ef9858ad0401eb5e102" > output.json
 
-2025-10-25T17:00:00+02:00
-2025-10-25T18:00:00+02:00
+curl -X GET "https://api.els.mk/v2/orders/sort?dateFrom=2025-11-01T13%3A30%3A47.654%2B01%3A00&dateTo=2025-11-01T14%3A00%3A00.000%2B01%3A00" \
+  -H "Authorization: Bearer 1b0a898516a9bb6e1eca37944d8e28f1cf0660c8" 
 
-2025-10-25T15:00:00Z
-2025-10-25T16:00:00Z
 
-curl -X POST http://localhost:3000/jobs/preload \
-  -H "Content-Type: application/json" \
-  -d '{"days": 1, "timeOffsetDays": 0}'

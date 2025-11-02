@@ -33,8 +33,13 @@
 - [X] cache safety timer
 - [X] DB health checks
 ---
-- [ ] auth layer for external api
-- [ ] test preload functionality with real data
-- [ ] configure test_data schema
-- [ ] 
+- [X] auth layer for external api
+- [X] test preload functionality with real data
+- [X] app startup 
+- [ ] logging pattern
+- [ ] test
+  - [ ] reference data
+  - [ ] unified timestamps
+  - [ ] query based on reference data
+  - [ ] hub ref view
 - [ ] register scanned parcels

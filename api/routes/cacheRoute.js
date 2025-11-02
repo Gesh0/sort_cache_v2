@@ -1,6 +1,7 @@
 import express from 'express'
 import { pool } from '../utils/db.js'
 import { StalenessTimer } from '../utils/timer.js'
+import { logOperation } from '../utils/logger.js'
 
 const router = express.Router()
 
@@ -8,6 +9,9 @@ let cache = new Map()
 const cacheTimer = new StalenessTimer('cache', 80)
 
 async function refreshCache() {
+  const logger = logOperation('REFRESH_CACHE')
+  logger.pending()
+
   const { rows } = await pool.query(`
     SELECT serial_number, port
     FROM derived_cache
@@ -15,6 +19,8 @@ async function refreshCache() {
   `)
   cache = new Map(rows.map((r) => [r.serial_number, r.port]))
   cacheTimer.reset()
+
+  logger.success(`cache_size: ${cache.size}`)
 }
 
 async function initCache() {

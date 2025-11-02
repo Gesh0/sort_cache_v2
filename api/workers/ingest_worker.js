@@ -2,6 +2,7 @@ import { pool } from '../utils/db.js'
 import { toAPIFormat, fromAPIFormat } from '../utils/timestamps.js'
 import { fetchWithRetry, authenticate } from '../utils/network.js'
 import { StalenessTimer } from '../utils/timer.js'
+import { logOperation } from '../utils/logger.js'
 
 export default async function (config) {
   const client = await pool.connect()
@@ -18,6 +19,7 @@ export default async function (config) {
   if (config.data === 'real') {
     try {
       authToken = await authenticate()
+      console.log('AUTH TOKEN: ', authToken)
     } catch (error) {
       console.error('[INGEST WORKER] Authentication failed:', error.message)
       process.exit(1)
@@ -29,10 +31,11 @@ export default async function (config) {
 
     if (msg.channel !== 'ingest_worker') return
 
-    console.log(msg.payload)
-
     const { job_id, data } = JSON.parse(msg.payload)
     const { dateFrom, dateTo } = data
+
+    const logger = logOperation('INGEST_WORKER')
+    logger.pending(`job_id: ${job_id}`)
 
     await pool.query(
       `INSERT INTO job_events (job_id, event_type) VALUES ($1, 'worker_started')`,
@@ -54,15 +57,7 @@ export default async function (config) {
     try {
       items = await fetchWithRetry(url.toString(), authToken)
     } catch (error) {
-      console.log('[INGEST WORKER] failed - retry exhausted')
-      console.log(
-        JSON.stringify({
-          dateFrom,
-          dateTo,
-          url: url.toString(),
-          error: error.message,
-        })
-      )
+      logger.failure(error)
       await pool.query(
         `INSERT INTO job_events (job_id, event_type, payload) VALUES ($1, 'failed', $2)`,
         [job_id, JSON.stringify({ error: error.message })]
@@ -70,17 +65,23 @@ export default async function (config) {
       return
     }
 
-    const values = items.map((item) => [
-      job_id,
-      item.serialNumber,
-      item.logisticsPointId,
-      item.logisticsPointName,
-      fromAPIFormat(item.updatedAt),
-    ])
+    const values = items
+      .filter(
+        (item) =>
+          item.logisticsPointId != null && item.logisticsPointName != null
+      )
+      .map((item) => [
+        job_id,
+        item.serialNumber,
+        item.logisticsPointId,
+        item.logisticsPointName,
+        fromAPIFormat(item.updatedAt),
+      ])
 
-    await client.query(
+    const rawResult = await client.query(
       `INSERT INTO ingest_raw (job_ref, serial_number, logistics_point_id, logistics_point_name, updated_at)
-       SELECT * FROM unnest($1::int[], $2::text[], $3::int[], $4::text[], $5::timestamptz[])`,
+       SELECT * FROM unnest($1::int[], $2::text[], $3::int[], $4::text[], $5::timestamptz[])
+       RETURNING id`,
       [
         values.map((v) => v[0]),
         values.map((v) => v[1]),
@@ -89,6 +90,9 @@ export default async function (config) {
         values.map((v) => v[4]),
       ]
     )
+
+    const rawIds = rawResult.rows.map(r => r.id)
+    logger.success(`ingest_raw_ids: ${JSON.stringify(rawIds)}`)
 
     await pool.query(
       `INSERT INTO job_events (job_id, event_type) VALUES ($1, 'raw_inserted')`,

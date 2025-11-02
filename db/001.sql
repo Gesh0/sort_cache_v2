@@ -75,3 +75,9 @@ SELECT DISTINCT ON (job_id)
 FROM job_events
 WHERE job_id IS NOT NULL
 ORDER BY job_id, id DESC;
+
+CREATE TABLE events_data (
+  id SERIAL PRIMARY KEY,
+  serial_number TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);

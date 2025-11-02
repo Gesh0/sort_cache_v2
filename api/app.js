@@ -8,13 +8,18 @@ import jobsRoutes from './routes/jobsRoutes.js'
 import dataRoutes from './routes/dataRoutes.js'
 import cacheRoute from './routes/cacheRoute.js'
 
-import { bootstrapSortmap, initIngest, preloadIngestJobs } from './utils/init.js'
+import {
+  bootstrapSortmap,
+  initIngest,
+  preloadIngestJobs,
+} from './utils/init.js'
 import { setTimeOffset } from './utils/timestamps.js'
+import { insertEvents } from './utils/test.js'
 
 const CONFIG = {
-  offset: 0,
-  range: 24,
-  data: 'test'
+  offset: 3,
+  range: 0,
+  data: 'real',
 }
 
 app.use(express.json())

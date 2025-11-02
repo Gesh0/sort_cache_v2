@@ -1,3 +1,5 @@
+import { logOperation } from './logger.js'
+
 async function retryWrapper(fn, context = '') {
   const maxRetries = 5
   const delays = [60000, 120000, 240000, 480000, 960000]
@@ -21,6 +23,9 @@ async function retryWrapper(fn, context = '') {
 }
 
 export async function authenticate() {
+  const logger = logOperation('AUTH')
+  logger.pending()
+
   const token = await retryWrapper(async () => {
     const response = await fetch('https://api.els.mk/users/login', {
       method: 'POST',
@@ -42,12 +47,15 @@ export async function authenticate() {
     return response
   }, '[AUTH]')
 
-  console.log('[AUTH] Successfully authenticated')
+  logger.success()
   return token
 }
 
 export async function fetchWithRetry(url, token = null) {
-  return await retryWrapper(async () => {
+  const logger = logOperation('FETCH')
+  logger.pending(url)
+
+  const data = await retryWrapper(async () => {
     const fetchOptions = {
       signal: AbortSignal.timeout(30000),
     }
@@ -68,4 +76,7 @@ export async function fetchWithRetry(url, token = null) {
 
     return data
   }, `[FETCH ${url}]`)
+
+  logger.success(url)
+  return data
 }

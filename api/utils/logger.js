@@ -1,14 +1,14 @@
-// logger.js
-export function logOperation(origin, context) {
-  console.log(`[${origin}]-[START] ${context || ''}`)
-
+export function logOperation(origin) {
   return {
-    success: () => {
-      console.log(`[${origin}]-[SUCCESS] ${context}`)
+    pending: (context = '') => {
+      console.log(`[${origin}] - [PENDING] ${context} ${new Date().toISOString()}`)
+    },
+    success: (context = '') => {
+      console.log(`[${origin}] - [SUCCESS] ${context} ${new Date().toISOString()}`)
     },
     failure: (error) => {
       const msg = error?.message || error?.toString() || 'Unknown error'
-      console.error(`[${origin}]-[FAILURE] ${JSON.stringify(msg)}`)
+      console.error(`[${origin}] - [FAILURE] ${msg} ${new Date().toISOString()}`)
     },
   }
 }

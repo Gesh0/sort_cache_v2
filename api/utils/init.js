@@ -4,28 +4,35 @@ import { utcNow, batchIngestJobs, msUntilNextHour } from './timestamps.js'
 
 
 export async function bootstrapSortmap() {
-  await fetch(`http://localhost:3000/jobs/sortmap`)
+  const logger = logOperation('BOOTSTRAP_SORTMAP')
+  logger.pending()
+
+  const response = await fetch(`http://localhost:3000/jobs/sortmap`)
+  const result = await response.json()
+
+  logger.success(`job_id: ${result.id}`)
 }
 
 export async function preloadIngestJobs(days) {
-  const logger = logOperation('PRELOAD INGEST')
+  const logger = logOperation('PRELOAD_INGEST')
 
   const end = utcNow()
   const start = end.minus({ days })
 
   const jobs = batchIngestJobs(start.toISO(), end.toISO())
 
-  logger.success(`Creating ${jobs.length} jobs for ${days} days`)
+  logger.pending(`job_count: ${jobs.length}`)
 
   const values = jobs.map((_, i) => `('ingest', $${i + 1})`).join(', ')
   const params = jobs.map((j) => JSON.stringify(j))
 
-  await pool.query(
-    `INSERT INTO job_queue (type, data) VALUES ${values}`,
+  const result = await pool.query(
+    `INSERT INTO job_queue (type, data) VALUES ${values} RETURNING id`,
     params
   )
 
-  logger.success(`Preloaded ${jobs.length} jobs from ${start.toISO()} to ${end.toISO()}`)
+  const jobIds = result.rows.map(r => r.id)
+  logger.success(`job_ids: ${JSON.stringify(jobIds)}`)
 }
 
 async function getLastIngestTime() {
@@ -62,25 +69,28 @@ function scheduleTimer() {
 }
 
 export async function initIngest() {
-  const logger = logOperation('INIT INGEST')
+  const logger = logOperation('INIT_INGEST')
+  logger.pending()
+
   try {
     const lastTimeISO = await getLastIngestTime()
     const segments = batchIngestJobs(lastTimeISO, utcNow().toISO())
 
     if (segments.length === 0) {
-      return logger.failure()
+      return logger.failure('No segments to process')
     }
 
     const values = segments.map((_, i) => `('ingest', $${i + 1})`).join(', ')
     const params = segments.map((s) => JSON.stringify(s))
 
-    await pool.query(
-      `INSERT INTO job_queue (type, data) VALUES ${values}`,
+    const result = await pool.query(
+      `INSERT INTO job_queue (type, data) VALUES ${values} RETURNING id`,
       params
     )
 
     scheduleTimer()
-    logger.success(JSON.stringify(segments))
+    const jobIds = result.rows.map(r => r.id)
+    logger.success(`job_ids: ${JSON.stringify(jobIds)}`)
   } catch (error) {
     return logger.failure(error)
   }
