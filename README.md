@@ -33,6 +33,8 @@
 - [X] cache safety timer
 - [X] DB health checks
 ---
-- [ ] design overnight test
 - [ ] auth layer for external api
+- [ ] test preload functionality with real data
+- [ ] configure test_data schema
+- [ ] 
 - [ ] register scanned parcels

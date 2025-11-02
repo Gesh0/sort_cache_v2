@@ -1,31 +1,71 @@
-export async function fetchWithRetry(url, maxRetries = 5) {
-  const delays = [60000, 120000, 240000, 480000, 960000] // 1min, 2min, 4min, 8min, 16min
-  
+async function retryWrapper(fn, context = '') {
+  const maxRetries = 5
+  const delays = [60000, 120000, 240000, 480000, 960000]
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(url, {
-        signal: AbortSignal.timeout(30000), // 30s timeout
-      })
-
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
-
-      const data = await response.json()
-
-      if (!Array.isArray(data)) throw new Error('Response is not an array')
-
-      return { success: true, data }
+      return await fn()
     } catch (error) {
-      console.error(`Fetch attempt ${url}`)
-      console.error(`Fetch attempt ${attempt + 1} failed:`, error.message)
+      console.error(`${context} attempt ${attempt + 1} failed:`, error.message)
 
       if (attempt === maxRetries) {
-        console.error('All retry attempts exhausted')
-        return { success: false, error: error.message }
+        console.error(`${context} all retry attempts exhausted`)
+        throw error
       }
 
       const delay = delays[attempt]
-      console.log(`Retrying in ${delay / 1000}s...`)
+      console.log(`${context} retrying in ${delay / 1000}s...`)
       await new Promise((resolve) => setTimeout(resolve, delay))
     }
   }
+}
+
+export async function authenticate() {
+  const token = await retryWrapper(async () => {
+    const response = await fetch('https://api.els.mk/users/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: '6605606e9f6bae01522f1b829e9f2324',
+        client_secret: 'de027eb49c9c6febcca1711e8bd73687',
+        username: 'test.sort',
+        password: 'Pf82ZSrTx$csr',
+        grant_type: 'password',
+      }),
+      signal: AbortSignal.timeout(30000),
+    }).then(async (res) => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      return data.access_token
+    })
+
+    return response
+  }, '[AUTH]')
+
+  console.log('[AUTH] Successfully authenticated')
+  return token
+}
+
+export async function fetchWithRetry(url, token = null) {
+  return await retryWrapper(async () => {
+    const fetchOptions = {
+      signal: AbortSignal.timeout(30000),
+    }
+
+    if (token) {
+      fetchOptions.headers = {
+        Authorization: `Bearer ${token}`,
+      }
+    }
+
+    const response = await fetch(url, fetchOptions)
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+
+    const data = await response.json()
+
+    if (!Array.isArray(data)) throw new Error('Response is not an array')
+
+    return data
+  }, `[FETCH ${url}]`)
 }

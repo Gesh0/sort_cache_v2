@@ -22,10 +22,10 @@ function seededRandom(seed) {
   return x - Math.floor(x)
 }
 
-export function generateMockData(dateFrom, dateTo) {
-  const seed = hashCode(`${dateFrom}-${dateTo}`)
+export function generateMockData(dateFrom, dateTo, index) {
   const timestamp = toAPIFormat(dateFrom)
-  const dynamicSN = `DYNAMIC${String(seed % 1000).padStart(3, '0')}`
+  const dynamicSN = `DYNAMIC${index}`
+  const seed = hashCode(`${dateFrom}-${dateTo}`)
   const loc = locations[Math.floor(seededRandom(seed + 1) * locations.length)]
 
   return [
@@ -46,5 +46,5 @@ export function generateMockData(dateFrom, dateTo) {
 
 export default function (startISO, endISO) {
   const jobs = batchIngestJobs(startISO, endISO)
-  return jobs.flatMap((job) => generateMockData(job.dateFrom, job.dateTo))
+  return jobs.flatMap((job, index) => generateMockData(job.dateFrom, job.dateTo, index + 1))
 }

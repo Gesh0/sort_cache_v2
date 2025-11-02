@@ -4,7 +4,7 @@ import { utcMinus, utcNow, fromAPIFormatDT } from '../utils/timestamps.js'
 
 const router = express.Router()
 
-const data = generateDynamic(utcMinus(2), utcNow().toISO())
+const data = generateDynamic(utcMinus(48), utcNow().toISO())
 
 router.get('/', (req, res) => {
   const { dateFrom, dateTo } = req.query

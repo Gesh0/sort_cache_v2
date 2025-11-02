@@ -21,15 +21,11 @@ async function initCache() {
   const client = await pool.connect()
   await client.query('LISTEN load_cache')
 
-  const notifyTimer = new StalenessTimer('cache-notify', 80)
+  const notifyTimer = new StalenessTimer('cache-notify', 80, () => {
+    console.error('[CACHE] No notifications for 80 minutes, connection may be lost')
+    process.exit(1)
+  })
   notifyTimer.reset()
-
-  setInterval(() => {
-    if (notifyTimer.isStale()) {
-      console.error('[CACHE] No notifications for 80 minutes, connection may be lost')
-      process.exit(1)
-    }
-  }, 10 * 60 * 1000)
 
   client.on('notification', (msg) => {
     if (msg.channel === 'load_cache') {

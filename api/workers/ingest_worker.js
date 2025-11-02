@@ -1,20 +1,28 @@
 import { pool } from '../utils/db.js'
 import { toAPIFormat, fromAPIFormat } from '../utils/timestamps.js'
-import { fetchWithRetry } from '../utils/network.js'
+import { fetchWithRetry, authenticate } from '../utils/network.js'
 import { StalenessTimer } from '../utils/timer.js'
 
-export default async function () {
+export default async function (config) {
   const client = await pool.connect()
   await client.query('LISTEN ingest_worker')
-  const notifyTimer = new StalenessTimer('notify', 80)
+  const notifyTimer = new StalenessTimer('notify', 80, () => {
+    console.error(
+      '[INGEST WORKER] No jobs for 80 minutes, worker may be disconnected'
+    )
+    process.exit(1)
+  })
   notifyTimer.reset()
 
-  setInterval(() => {
-    if (notifyTimer.isStale()) {
-      console.error('[INGEST WORKER] No jobs for 80 minutes, worker may be disconnected')
+  let authToken = null
+  if (config.data === 'real') {
+    try {
+      authToken = await authenticate()
+    } catch (error) {
+      console.error('[INGEST WORKER] Authentication failed:', error.message)
       process.exit(1)
     }
-  }, 10 * 60 * 1000)
+  }
 
   client.on('notification', async (msg) => {
     notifyTimer.reset()
@@ -26,25 +34,41 @@ export default async function () {
     const { job_id, data } = JSON.parse(msg.payload)
     const { dateFrom, dateTo } = data
 
-    await pool.query(`INSERT INTO job_events (job_id, event_type) VALUES ($1, 'worker_started')`, [job_id])
+    await pool.query(
+      `INSERT INTO job_events (job_id, event_type) VALUES ($1, 'worker_started')`,
+      [job_id]
+    )
 
-    const url = new URL('http://localhost:3000/data/')
-    url.searchParams.set('dateFrom', toAPIFormat(dateFrom))
-    url.searchParams.set('dateTo', toAPIFormat(dateTo))
+    let url
+    if (config.data === 'test') {
+      url = new URL('http://localhost:3000/data/')
+      url.searchParams.set('dateFrom', toAPIFormat(dateFrom))
+      url.searchParams.set('dateTo', toAPIFormat(dateTo))
+    } else {
+      url = new URL('https://api.els.mk/v2/orders/sort')
+      url.searchParams.set('dateFrom', toAPIFormat(dateFrom))
+      url.searchParams.set('dateTo', toAPIFormat(dateTo))
+    }
 
-    const result = await fetchWithRetry(url.toString())
-
-    if (!result.success) {
+    let items
+    try {
+      items = await fetchWithRetry(url.toString(), authToken)
+    } catch (error) {
       console.log('[INGEST WORKER] failed - retry exhausted')
-      console.log(JSON.stringify({ dateFrom, dateTo, url: url.toString(), error: result.error }))
+      console.log(
+        JSON.stringify({
+          dateFrom,
+          dateTo,
+          url: url.toString(),
+          error: error.message,
+        })
+      )
       await pool.query(
         `INSERT INTO job_events (job_id, event_type, payload) VALUES ($1, 'failed', $2)`,
-        [job_id, JSON.stringify({ error: result.error })]
+        [job_id, JSON.stringify({ error: error.message })]
       )
       return
     }
-
-    const items = result.data
 
     const values = items.map((item) => [
       job_id,
@@ -66,6 +90,9 @@ export default async function () {
       ]
     )
 
-    await pool.query(`INSERT INTO job_events (job_id, event_type) VALUES ($1, 'raw_inserted')`, [job_id])
+    await pool.query(
+      `INSERT INTO job_events (job_id, event_type) VALUES ($1, 'raw_inserted')`,
+      [job_id]
+    )
   })
 }
