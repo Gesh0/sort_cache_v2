@@ -1,10 +1,10 @@
 import { pool } from '../utils/db.js'
 import { logOperation } from './logger.js'
-import { utcNow, batchIngestJobs, msUntilNextHour } from './timestamps.js'
+import { utcNow, batchIngestJobs } from './timestamps.js'
+import { StalenessTimer } from './timer.js'
 
-
-export async function bootstrapSortmap() {
-  const logger = logOperation('BOOTSTRAP_SORTMAP')
+export async function preloadSortmap() {
+  const logger = logOperation('BOOTSTRAP SORTMAP')
   logger.pending()
 
   const response = await fetch(`http://localhost:3000/jobs/sortmap`)
@@ -31,7 +31,7 @@ export async function preloadIngestJobs(days) {
     params
   )
 
-  const jobIds = result.rows.map(r => r.id)
+  const jobIds = result.rows.map((r) => r.id)
   logger.success(`job_ids: ${JSON.stringify(jobIds)}`)
 }
 
@@ -52,46 +52,61 @@ async function getLastIngestTime() {
 }
 
 async function queueHourlyJob() {
+  const logger = logOperation('QUEUE_HOURLY_JOB')
+
+
   const now = utcNow()
   const lastHourStart = now.minus({ hours: 1 }).startOf('hour').toISO()
   const lastHourEnd = now.startOf('hour').toISO()
 
-  await pool.query(`INSERT INTO job_queue (type, data) VALUES ('ingest', $1)`, [
-    JSON.stringify({ dateFrom: lastHourStart, dateTo: lastHourEnd }),
-  ])
+  // const lastIngestTime = await getLastIngestTime()
+  // const now = utcNow().toISO()
+
+  const result = await pool.query(
+    `INSERT INTO job_queue (type, data) VALUES ('ingest', $1) RETURNING id`,
+    [JSON.stringify({ dateFrom: lastHourStart, dateTo: lastHourEnd })]
+  )
+
+  logger.success(`job_id: ${result.rows[0].id}`)
 }
 
-function scheduleTimer() {
-  setTimeout(async () => {
+const ingestTimer = new StalenessTimer('ingest', 60, async () => {
+  try {
     await queueHourlyJob()
-    scheduleTimer()
-  }, msUntilNextHour())
-}
+  } catch (error) {
+    const logger = logOperation('INGEST_TIMER')
+    logger.failure(error)
+  } finally {
+    ingestTimer.reset()
+  }
+})
 
 export async function initIngest() {
   const logger = logOperation('INIT_INGEST')
-  logger.pending()
 
   try {
     const lastTimeISO = await getLastIngestTime()
-    const segments = batchIngestJobs(lastTimeISO, utcNow().toISO())
+    const nowISO = utcNow().toISO()
+    const segments = batchIngestJobs(lastTimeISO, nowISO)
 
-    if (segments.length === 0) {
-      return logger.failure('No segments to process')
+    if (segments.length > 0) {
+      const values = segments.map((_, i) => `('ingest', $${i + 1})`).join(', ')
+      const params = segments.map((s) => JSON.stringify(s))
+
+      const result = await pool.query(
+        `INSERT INTO job_queue (type, data) VALUES ${values} RETURNING id`,
+        params
+      )
+
+      const jobIds = result.rows.map((r) => r.id)
+      logger.success(`job_ids: ${JSON.stringify(jobIds)}`)
+    } else {
+      logger.pending('No gap, skipping')
     }
 
-    const values = segments.map((_, i) => `('ingest', $${i + 1})`).join(', ')
-    const params = segments.map((s) => JSON.stringify(s))
-
-    const result = await pool.query(
-      `INSERT INTO job_queue (type, data) VALUES ${values} RETURNING id`,
-      params
-    )
-
-    scheduleTimer()
-    const jobIds = result.rows.map(r => r.id)
-    logger.success(`job_ids: ${JSON.stringify(jobIds)}`)
+    ingestTimer.reset()
   } catch (error) {
-    return logger.failure(error)
+    logger.failure(error)
+    ingestTimer.reset()
   }
 }

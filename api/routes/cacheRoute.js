@@ -28,7 +28,8 @@ async function initCache() {
   await client.query('LISTEN load_cache')
 
   const notifyTimer = new StalenessTimer('cache-notify', 80, () => {
-    console.error('[CACHE] No notifications for 80 minutes, connection may be lost')
+    const logger = logOperation('CACHE_NOTIFY_TIMER')
+    logger.failure('No notifications for 80 minutes, connection may be lost')
     process.exit(1)
   })
   notifyTimer.reset()

@@ -1,22 +1,22 @@
 import { logOperation } from './logger.js'
 
-async function retryWrapper(fn, context = '') {
+async function retryWrapper(fn, origin = '') {
   const maxRetries = 5
   const delays = [60000, 120000, 240000, 480000, 960000]
+  const logger = logOperation(origin)
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn()
     } catch (error) {
-      console.error(`${context} attempt ${attempt + 1} failed:`, error.message)
+      logger.failure(`attempt ${attempt + 1} failed: ${error.message}`)
 
       if (attempt === maxRetries) {
-        console.error(`${context} all retry attempts exhausted`)
         throw error
       }
 
       const delay = delays[attempt]
-      console.log(`${context} retrying in ${delay / 1000}s...`)
+      logger.pending(`retrying in ${delay / 1000}s`)
       await new Promise((resolve) => setTimeout(resolve, delay))
     }
   }
@@ -45,7 +45,7 @@ export async function authenticate() {
     })
 
     return response
-  }, '[AUTH]')
+  }, 'AUTH')
 
   logger.success()
   return token
@@ -75,7 +75,7 @@ export async function fetchWithRetry(url, token = null) {
     if (!Array.isArray(data)) throw new Error('Response is not an array')
 
     return data
-  }, `[FETCH ${url}]`)
+  }, 'FETCH')
 
   logger.success(url)
   return data

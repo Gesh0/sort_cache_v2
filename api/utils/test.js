@@ -1,7 +1,11 @@
 import { pool } from './db.js'
-import { toAPIFormat, utcMinus, utcNow } from './timestamps.js'
+import { toAPIFormat, utcNow } from './timestamps.js'
+import { logOperation } from './logger.js'
 
 async function auth() {
+  const logger = logOperation('TEST_AUTH')
+  logger.pending()
+
   const address = 'https://api.els.mk/users/login'
   const config = {
     method: 'POST',
@@ -21,17 +25,21 @@ async function auth() {
     const url = new URL(address)
     const response = await fetch(url, config)
     const results = await response.json()
+    logger.success()
     return results.access_token
   } catch (error) {
-    console.log('[TEST AUTH] ', JSON.stringify(error))
+    logger.failure(error)
   }
 }
 
-async function fetchEvents() {
+export async function fetchEvents() {
+  const logger = logOperation('TEST_FETCH_EVENTS')
+  logger.pending()
+
   const token = await auth()
   const address = 'https://api.els.mk/courier-analytics/orders/status-track'
-  const dateFrom = utcMinus(2)
-  const dateTo = utcNow()
+  const dateFrom = utcNow().minus({ days: 1 }).toISO()
+  const dateTo = utcNow().toISO()
   const config = { headers: { Authorization: `Bearer ${token}` } }
 
   try {
@@ -39,20 +47,26 @@ async function fetchEvents() {
     url.searchParams.set('eventDateFrom', toAPIFormat(dateFrom))
     url.searchParams.set('eventDateTo', toAPIFormat(dateTo))
     url.searchParams.set('limit', 0)
-    console.log(JSON.stringify(url))
 
     const response = await fetch(url, config)
     const results = await response.json()
+    logger.success(`events: ${results.data.length}`)
     return results.data
-  } catch (error) {}
+  } catch (error) {
+    logger.failure(error)
+  }
 }
 
 export async function insertEvents() {
+  const logger = logOperation('TEST_INSERT_EVENTS')
+  logger.pending()
+
   const events = await fetchEvents()
   const filteredEvents = events.filter((event) => event.statusId === 80)
 
-  if (filteredEvents.length === 0)
-    return console.log('no events matching filter')
+  if (filteredEvents.length === 0) {
+    return logger.failure('no events matching filter')
+  }
 
   const { values, params } = filteredEvents.reduce(
     (acc, { barcode, date }, i) => {
@@ -66,15 +80,17 @@ export async function insertEvents() {
   const valuesStr = values.join(', ')
 
   try {
-    await pool.query(
+    const result = await pool.query(
       `
       INSERT INTO events_data (serial_number, created_at)
       VALUES ${valuesStr}
-      RETURNING *
+      RETURNING id
       `,
       params
     )
+    const ids = result.rows.map(r => r.id)
+    logger.success(`event_ids: ${JSON.stringify(ids)}`)
   } catch (error) {
-    console.log(JSON.stringify(error))
+    logger.failure(error)
   }
 }

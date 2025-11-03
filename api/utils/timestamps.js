@@ -19,12 +19,6 @@ function getTimeReference() {
   if (TIME_OFFSET_DAYS > 0) {
     const offsetDuration = { days: TIME_OFFSET_DAYS }
     timeReference = () => DateTime.utc().minus(offsetDuration)
-
-    console.warn('╔════════════════════════════════════╗')
-    console.warn('║  TIME OFFSET MODE ACTIVE           ║')
-    console.warn(`║  Offset: ${TIME_OFFSET_DAYS} days in the past        ║`)
-    console.warn(`║  Reference: ${timeReference().toISO()} ║`)
-    console.warn('╚════════════════════════════════════╝')
   } else {
     timeReference = () => DateTime.utc()
   }
@@ -86,5 +80,3 @@ export function batchIngestJobs(startISO, endISO) {
 
   return jobs
 }
-
-

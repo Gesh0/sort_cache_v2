@@ -36,10 +36,31 @@
 - [X] auth layer for external api
 - [X] test preload functionality with real data
 - [X] app startup 
-- [ ] logging pattern
+- [X] logging pattern
 - [ ] test
-  - [ ] reference data
+  - [X] reference data
   - [ ] unified timestamps
   - [ ] query based on reference data
   - [ ] hub ref view
 - [ ] register scanned parcels
+---
+problem
+loop fails because inserts with zero data happen
+job gets started via loop start
+job doesnt get write in results
+job is permentenly pending
+
+loop start
+based on job_queue append
+
+loop continue
+based on job_events
+
+solutions
+
+continuation in sql
+we accept that there is nothing to write and issue job complete
+
+forced continuation
+we write job completed in api if lenght = 0
+

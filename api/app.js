@@ -9,7 +9,7 @@ import dataRoutes from './routes/dataRoutes.js'
 import cacheRoute from './routes/cacheRoute.js'
 
 import {
-  bootstrapSortmap,
+  preloadSortmap,
   initIngest,
   preloadIngestJobs,
 } from './utils/init.js'
@@ -17,8 +17,8 @@ import { setTimeOffset } from './utils/timestamps.js'
 import { insertEvents } from './utils/test.js'
 
 const CONFIG = {
-  offset: 3,
-  range: 0,
+  offset: 4,
+  range: 6,
   data: 'real',
 }
 
@@ -34,11 +34,13 @@ app.listen(3000, async () => {
 
   await ingest_worker(CONFIG)
 
-  await bootstrapSortmap()
-
-  await initIngest()
-
+  await preloadSortmap()
+  
   if (CONFIG.range > 0) {
     await preloadIngestJobs(CONFIG.range / 24)
   }
+
+  await initIngest()
+
+  // await insertEvents()
 })

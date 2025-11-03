@@ -1,4 +1,4 @@
-import { batchIngestJobs, toAPIFormat } from '../utils/timestamps.js'
+import { batchIngestJobs, toAPIFormat, parseISO } from '../utils/timestamps.js'
 
 const locations = [
   { id: 1, name: '001 - Skopje Center' },
@@ -45,6 +45,7 @@ export function generateMockData(dateFrom, dateTo, index) {
 }
 
 export default function (startISO, endISO) {
-  const jobs = batchIngestJobs(startISO, endISO)
+  const extendedEnd = parseISO(endISO).plus({ hours: 1 }).toISO()
+  const jobs = batchIngestJobs(startISO, extendedEnd)
   return jobs.flatMap((job, index) => generateMockData(job.dateFrom, job.dateTo, index + 1))
 }

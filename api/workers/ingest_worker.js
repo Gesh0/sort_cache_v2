@@ -8,9 +8,8 @@ export default async function (config) {
   const client = await pool.connect()
   await client.query('LISTEN ingest_worker')
   const notifyTimer = new StalenessTimer('notify', 80, () => {
-    console.error(
-      '[INGEST WORKER] No jobs for 80 minutes, worker may be disconnected'
-    )
+    const logger = logOperation('INGEST_WORKER_TIMER')
+    logger.failure('No jobs for 80 minutes, worker may be disconnected')
     process.exit(1)
   })
   notifyTimer.reset()
@@ -19,9 +18,9 @@ export default async function (config) {
   if (config.data === 'real') {
     try {
       authToken = await authenticate()
-      console.log('AUTH TOKEN: ', authToken)
     } catch (error) {
-      console.error('[INGEST WORKER] Authentication failed:', error.message)
+      const logger = logOperation('INGEST_WORKER_AUTH')
+      logger.failure(error)
       process.exit(1)
     }
   }

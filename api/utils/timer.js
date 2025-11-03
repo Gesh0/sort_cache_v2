@@ -1,4 +1,5 @@
 import { utcNow } from './timestamps.js'
+import { logOperation } from './logger.js'
 
 export class StalenessTimer {
   constructor(name, ttlMinutes, onExpire = null) {
@@ -13,15 +14,13 @@ export class StalenessTimer {
     if (this.timeoutId) clearTimeout(this.timeoutId)
 
     this.expiresAt = utcNow().toMillis() + this.ttl
-    console.log(
-      `[TIMER] [${this.name}] ${this.ttl / 60000} minutes - ${utcNow()
-        .plus({ milliseconds: this.ttl })
-        .toISO()}`
-    )
+    const logger = logOperation('TIMER')
+    logger.pending(`${this.name} ${this.ttl / 60000}m expires: ${utcNow().plus({ milliseconds: this.ttl }).toISO()}`)
 
     if (this.onExpire) {
       this.timeoutId = setTimeout(() => {
-        console.error(`[TIMER] [${this.name}] expired after ${this.ttl / 60000} minutes`)
+        const logger = logOperation('TIMER')
+        logger.failure(`${this.name} expired after ${this.ttl / 60000}m`)
         this.onExpire()
       }, this.ttl)
     }

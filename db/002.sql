@@ -11,8 +11,8 @@ BEGIN
   SELECT jq.id, jq.data
   FROM job_queue jq
   WHERE jq.type = p_job_type
-    AND (p_max_job_id IS NULL OR jq.id < p_max_job_id)
-    AND NOT EXISTS (
+      AND (p_max_job_id IS NULL OR jq.id <= p_max_job_id)
+      AND NOT EXISTS (
       SELECT 1 FROM job_events je
       WHERE je.job_id = jq.id
       AND je.event_type IN ('completed', 'failed')
