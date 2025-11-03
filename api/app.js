@@ -16,16 +16,12 @@ import {
 } from './utils/init.js'
 import { setTimeOffset } from './utils/timestamps.js'
 import { insertEvents } from './utils/test.js'
-import { LoadTester } from './utils/load_test.js'
 
 const CONFIG = {
-  offset: 4,
+  offset: 4.5,
   range: 504,
   data: 'real',
-  test: {
-    queriesPerHour: 12000,
-    hoursToSpread: 1.25,
-  },
+  parcelsPerHour: 3600,
 }
 
 app.use(express.json())
@@ -42,16 +38,12 @@ app.listen(3000, async () => {
   await ingest_worker(CONFIG)
 
   await preloadSortmap()
-  
-  if (CONFIG.range > 0) {
-    await preloadIngestJobs(CONFIG.range / 24)
-  }
 
-  await initIngest()
+  // if (CONFIG.range > 0) {
+  //   await preloadIngestJobs(CONFIG.range / 24)
+  // }
+
+  // await initIngest()
 
   await insertEvents(CONFIG)
-
-  const tester = new LoadTester({ ...CONFIG.test, ...CONFIG })
-  await tester.prepareTestPool(CONFIG.test.hoursToSpread)
-  // tester.start()
 })

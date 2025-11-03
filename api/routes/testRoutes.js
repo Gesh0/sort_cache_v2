@@ -1,37 +1,18 @@
 import express from 'express'
 import { pool } from '../utils/db.js'
-import { LoadTester } from '../utils/load_test.js'
+import { testCache } from '../utils/test.js'
 
 export default function createTestRoutes(config) {
   const router = express.Router()
-  let tester = null
 
   router.get('/start', async (req, res) => {
-    if (tester) {
-      return res.status(400).json({ error: 'Test already running' })
-    }
 
-    tester = new LoadTester(config.test)
-    await tester.prepareTestPool(config.test.hoursToSpread)
-    tester.start()
+    testCache(config.parcelsPerHour)
 
     res.json({
       status: 'started',
-      poolSize: tester.testPool.length,
-      intervalMs: tester.intervalMs,
+      parcelsPerHour: config.parcelsPerHour,
     })
-  })
-
-  router.get('/stop', (req, res) => {
-    if (!tester) {
-      return res.status(400).json({ error: 'No test running' })
-    }
-
-    const completed = tester.currentIndex
-    tester.stop()
-    tester = null
-
-    res.json({ status: 'stopped', completed })
   })
 
   router.get('/results', async (req, res) => {

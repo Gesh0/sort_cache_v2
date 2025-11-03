@@ -13,7 +13,9 @@ services:
       - ../db/003.sql:/docker-entrypoint-initdb.d/03-cycle_triggers.sql:ro
       - ../db/004.sql:/docker-entrypoint-initdb.d/04-transforms.sql:ro
       - ../db/005.sql:/docker-entrypoint-initdb.d/05-load_cache.sql:ro
-      - ../db/006.sql:/docker-entrypoint-initdb.d/05-test.sql:ro
+      - ../db/006.sql:/docker-entrypoint-initdb.d/06-test.sql:ro
+      - ../db/007.sql:/docker-entrypoint-initdb.d/07-indexes.sql:ro
+      - ../db/008.sql:/docker-entrypoint-initdb.d/08-performance.sql:ro
       - db_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"

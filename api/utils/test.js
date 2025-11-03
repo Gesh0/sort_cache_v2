@@ -106,7 +106,7 @@ export async function insertEvents(config = {}) {
   }
 
   const filteredEvents = events.filter(
-    (event) => event.locationName = '"001 - Скопје Југ - Главен магацин"'
+    (event) => event.locationName === '"001 - Скопје Југ - Главен магацин"'
   )
 
   if (filteredEvents.length === 0) {
@@ -140,4 +140,56 @@ export async function insertEvents(config = {}) {
   } catch (error) {
     logger.failure(error)
   }
+}
+
+export async function testCache(parcelsPerHour = 3600) {
+  const logger = logOperation('TEST_CACHE')
+  logger.pending()
+
+  const { rows } = await pool.query('SELECT serial_number FROM events_data ORDER BY created_at DESC')
+
+  if (rows.length === 0) return logger.failure('No barcodes in events_data')
+
+  const intervalMs = (60 * 60 * 1000) / parcelsPerHour
+  logger.success(`testing ${rows.length} barcodes at ${parcelsPerHour}/hour (${intervalMs}ms interval)`)
+
+  const results = { total: rows.length, success: 0, failure: 0, totalResponseMs: 0 }
+
+  for (const { serial_number } of rows) {
+    const start = utcNow().toJSDate()
+
+    try {
+      const response = await fetch(`http://localhost:3000/cache/${serial_number}`)
+      const end = utcNow().toJSDate()
+      const { port } = await response.json()
+
+      const { rows: [{ numeration } = {}] } = await pool.query(
+        'SELECT numeration FROM sort_map WHERE port = $1 LIMIT 1',
+        [port]
+      )
+
+      await pool.query(
+        `INSERT INTO test_results (serial_number, port, numeration, request_start, request_end, response_time_ms, status_code)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [serial_number, port, numeration, start, end, end - start, response.status]
+      )
+
+      results.success++
+      results.totalResponseMs += end - start
+    } catch (error) {
+      await pool.query(
+        `INSERT INTO test_results (serial_number, request_start, request_end, response_time_ms, status_code, error)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [serial_number, start, utcNow().toJSDate(), utcNow().toJSDate() - start, 500, error.message]
+      )
+      results.failure++
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, intervalMs))
+  }
+
+  results.avgResponseMs = Math.round(results.totalResponseMs / results.success || 1)
+  logger.success(`completed | success: ${results.success}, failure: ${results.failure}, avg: ${results.avgResponseMs}ms`)
+
+  return results
 }

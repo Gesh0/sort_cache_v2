@@ -51,22 +51,25 @@ BEGIN
         updated_at
       FROM ingest_acc
       WHERE job_ref < v_job_ref
+        AND job_ref >= GREATEST(v_job_ref - 100, 1)  -- Lookback window: max 100 jobs
+        AND updated_at >= NOW() - INTERVAL '21 days'  -- Time-based cutoff
       ORDER BY serial_number, job_ref DESC
     ),
     active_prev AS (
       SELECT ps.*
       FROM prev_state ps
-      WHERE
-        NOT EXISTS (
-          SELECT 1 FROM scan_log
-          WHERE serial_number = ps.serial_number
-          AND created_at >= NOW() - INTERVAL '7 days'
-        )
-        AND ps.updated_at >= NOW() - INTERVAL '21 days'
+      LEFT JOIN (
+        SELECT DISTINCT serial_number
+        FROM scan_log
+        WHERE created_at >= NOW() - INTERVAL '7 days'
+      ) sl ON ps.serial_number = sl.serial_number
+      WHERE sl.serial_number IS NULL  -- Not scanned in last 7 days
     ),
     merged AS (
-      SELECT * FROM active_prev
-      WHERE serial_number NOT IN (SELECT serial_number FROM new_state)
+      SELECT ap.*
+      FROM active_prev ap
+      LEFT JOIN new_state ns USING (serial_number)
+      WHERE ns.serial_number IS NULL  -- Only items not in new_state
       UNION ALL
       SELECT * FROM new_state
     ),

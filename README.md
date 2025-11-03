@@ -43,9 +43,8 @@
   - [X] query based on reference data
 ---
 - [X] test suite config
-- [ ] time based queries
-- [ ] export to csv
-- [ ] pattern in matches
+- [ ] improve preload performance
+- [ ] cache refresh timer refactor 00logs
+- [ ] better analytics suite
 - [ ] register scanned parcels
-
-cache timer failing check logs ***
+- [ ] old data removal
