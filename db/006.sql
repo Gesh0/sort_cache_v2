@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS test_results (
   id SERIAL PRIMARY KEY,
   serial_number TEXT NOT NULL,
   port INTEGER,
+  numeration VARCHAR (3),
   request_start TIMESTAMP NOT NULL,
   request_end TIMESTAMP NOT NULL,
   response_time_ms INTEGER NOT NULL,

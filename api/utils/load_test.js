@@ -13,13 +13,14 @@ export class LoadTester {
     this.currentIndex = 0
     this.intervalId = null
     this.hoursToSpread = config.hoursToSpread || DEFAULT_HOURS
+    this.config = config
   }
 
   async loadTestData() {
     const logger = logOperation('LOAD_TEST_DATA')
     logger.pending()
 
-    const events = await fetchEvents()
+    const events = await fetchEvents(this.config)
     const filtered = events.filter((e) => e.statusId === 80)
 
     logger.success(`loaded ${filtered.length} events with statusId=80`)

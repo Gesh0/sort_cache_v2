@@ -39,28 +39,13 @@
 - [X] logging pattern
 - [ ] test
   - [X] reference data
-  - [ ] unified timestamps
-  - [ ] query based on reference data
-  - [ ] hub ref view
-- [ ] register scanned parcels
+  - [X] unified timestamps
+  - [X] query based on reference data
 ---
-problem
-loop fails because inserts with zero data happen
-job gets started via loop start
-job doesnt get write in results
-job is permentenly pending
+- [X] test suite config
+- [ ] time based queries
+- [ ] export to csv
+- [ ] pattern in matches
+- [ ] register scanned parcels
 
-loop start
-based on job_queue append
-
-loop continue
-based on job_events
-
-solutions
-
-continuation in sql
-we accept that there is nothing to write and issue job complete
-
-forced continuation
-we write job completed in api if lenght = 0
-
+cache timer failing check logs ***

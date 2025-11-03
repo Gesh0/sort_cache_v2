@@ -56,7 +56,7 @@ router.get('/:barcode', async (req, res) => {
   if (cacheTimer.isStale()) return res.status(503).json({ error: 'Cache stale' })
 
   const port = cache.get(req.params.barcode)
-  if (!port) return res.status(404).json({ error: 'Not found' })
+  if (!port) return res.json({ port: 2 })
 
   pool.query('INSERT INTO scan_log (serial_number, port) VALUES ($1, $2)', [
     req.params.barcode,

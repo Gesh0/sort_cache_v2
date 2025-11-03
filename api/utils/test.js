@@ -24,23 +24,38 @@ async function auth() {
   try {
     const url = new URL(address)
     const response = await fetch(url, config)
+
+    if (!response.ok) {
+      logger.failure(`HTTP ${response.status}: ${response.statusText}`)
+      return null
+    }
+
     const results = await response.json()
     logger.success()
     return results.access_token
   } catch (error) {
     logger.failure(error)
+    return null
   }
 }
 
-export async function fetchEvents() {
+export async function fetchEvents(config = {}) {
   const logger = logOperation('TEST_FETCH_EVENTS')
   logger.pending()
 
   const token = await auth()
+  if (!token) {
+    logger.failure('Authentication failed - no token received')
+    return []
+  }
+
   const address = 'https://api.els.mk/courier-analytics/orders/status-track'
-  const dateFrom = utcNow().minus({ days: 1 }).toISO()
+
+  const daysBack = config.range ? config.range / 24 : 1
+  const dateFrom = utcNow().minus({ days: daysBack }).toISO()
   const dateTo = utcNow().toISO()
-  const config = { headers: { Authorization: `Bearer ${token}` } }
+
+  const fetchConfig = { headers: { Authorization: `Bearer ${token}` } }
 
   try {
     const url = new URL(address)
@@ -48,24 +63,56 @@ export async function fetchEvents() {
     url.searchParams.set('eventDateTo', toAPIFormat(dateTo))
     url.searchParams.set('limit', 0)
 
-    const response = await fetch(url, config)
+    const response = await fetch(url, fetchConfig)
+
+    if (!response.ok) {
+      logger.failure(`HTTP ${response.status}: ${response.statusText}`)
+      return []
+    }
+
+    const contentType = response.headers.get('content-type')
+    if (!contentType || !contentType.includes('application/json')) {
+      logger.failure(`Unexpected content-type: ${contentType}`)
+      return []
+    }
+
     const results = await response.json()
+
+    if (!results || !results.data) {
+      logger.failure('Response missing data property')
+      return []
+    }
+
     logger.success(`events: ${results.data.length}`)
     return results.data
   } catch (error) {
     logger.failure(error)
+    return []
   }
 }
 
-export async function insertEvents() {
+export async function insertEvents(config = {}) {
   const logger = logOperation('TEST_INSERT_EVENTS')
   logger.pending()
 
-  const events = await fetchEvents()
-  const filteredEvents = events.filter((event) => event.statusId === 80)
+  const events = await fetchEvents(config)
+
+  if (!events || !Array.isArray(events)) {
+    return logger.failure('Failed to fetch events - received invalid data')
+  }
+
+  if (events.length === 0) {
+    return logger.failure('No events returned from API')
+  }
+
+  const filteredEvents = events.filter(
+    (event) => event.locationName = '"001 - Скопје Југ - Главен магацин"'
+  )
 
   if (filteredEvents.length === 0) {
-    return logger.failure('no events matching filter')
+    return logger.failure(
+      `No events matching filter | Total events: ${events.length}`
+    )
   }
 
   const { values, params } = filteredEvents.reduce(
