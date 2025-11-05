@@ -16,6 +16,8 @@ services:
       - ../db/006.sql:/docker-entrypoint-initdb.d/06-test.sql:ro
       - ../db/007.sql:/docker-entrypoint-initdb.d/07-indexes.sql:ro
       - ../db/008.sql:/docker-entrypoint-initdb.d/08-performance.sql:ro
+      - ../db/009.sql:/docker-entrypoint-initdb.d/09-preload_mode.sql:ro
+      - ../db/010.sql:/docker-entrypoint-initdb.d/09-comparison.sql:ro
       - db_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"

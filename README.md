@@ -48,3 +48,9 @@
 - [ ] better analytics suite
 - [ ] register scanned parcels
 - [ ] old data removal
+---
+- [X] fetch functions
+- [ ] compare match rate to all | binary
+- [ ] single day time diff analytics
+- [ ] multi day rewrite
+

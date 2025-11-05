@@ -18,10 +18,11 @@ export async function preloadIngestJobs(days) {
 
   const end = utcNow()
   const start = end.minus({ days })
-
   const jobs = batchIngestJobs(start.toISO(), end.toISO())
 
-  logger.pending(`job_count: ${jobs.length}`)
+  logger.pending(`job_count: ${jobs.length}, mode: FAST_PATH`)
+
+  await pool.query("SET app.preload_mode = true")
 
   const values = jobs.map((_, i) => `('ingest', $${i + 1})`).join(', ')
   const params = jobs.map((j) => JSON.stringify(j))
@@ -30,6 +31,11 @@ export async function preloadIngestJobs(days) {
     `INSERT INTO job_queue (type, data) VALUES ${values} RETURNING id`,
     params
   )
+
+  await new Promise((resolve) => setTimeout(resolve, jobs.length * 100))
+
+  await pool.query("SET app.preload_mode = false")
+  await pool.query("SELECT cleanup_after_preload()")
 
   const jobIds = result.rows.map((r) => r.id)
   logger.success(`job_ids: ${JSON.stringify(jobIds)}`)

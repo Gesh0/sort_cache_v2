@@ -1,6 +1,7 @@
 import express from 'express'
 import { pool } from '../utils/db.js'
 import { testCache } from '../utils/test.js'
+import { getMatchRate } from '../utils/comparison.js'
 
 export default function createTestRoutes(config) {
   const router = express.Router()
@@ -41,6 +42,11 @@ export default function createTestRoutes(config) {
     )
 
     res.json(rows)
+  })
+
+  router.get('/match-rate', async (req, res) => {
+    const matchRate = await getMatchRate()
+    res.json(matchRate)
   })
 
   return router

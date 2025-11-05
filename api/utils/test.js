@@ -105,41 +105,36 @@ export async function insertEvents(config = {}) {
     return logger.failure('No events returned from API')
   }
 
-  const filteredEvents = events.filter(
-    (event) => event.locationName === '"001 - Скопје Југ - Главен магацин"'
-  )
+  const filteredEvents = events
+    .filter((e) => e.locationName === '"001 - Скопје Југ - Главен магацин"')
+    .filter((e) => e.barcode && e.date)
 
   if (filteredEvents.length === 0) {
     return logger.failure(
-      `No events matching filter | Total events: ${events.length}`
+      `No valid events (missing barcode/date) | Total: ${events.length}`
     )
   }
 
-  const { values, params } = filteredEvents.reduce(
-    (acc, { barcode, date }, i) => {
-      acc.values.push(`($${i * 2 + 1}, $${i * 2 + 2})`)
-      acc.params.push(barcode, date)
-      return acc
-    },
-    { values: [], params: [] }
-  )
+  logger.pending(`inserting ${filteredEvents.length} events`)
 
-  const valuesStr = values.join(', ')
+  const batchSize = 1000
+  for (let i = 0; i < filteredEvents.length; i += batchSize) {
+    const batch = filteredEvents.slice(i, i + batchSize)
+    const values = batch.map((_, j) => `($${j * 2 + 1}, $${j * 2 + 2})`).join(', ')
+    const params = batch.flatMap((e) => [e.barcode, e.date])
 
-  try {
-    const result = await pool.query(
-      `
-      INSERT INTO events_data (serial_number, created_at)
-      VALUES ${valuesStr}
-      RETURNING id
-      `,
-      params
-    )
-    const ids = result.rows.map(r => r.id)
-    logger.success(`event_ids: ${JSON.stringify(ids)}`)
-  } catch (error) {
-    logger.failure(error)
+    try {
+      await pool.query(
+        `INSERT INTO events_data (serial_number, created_at) VALUES ${values} ON CONFLICT DO NOTHING`,
+        params
+      )
+    } catch (error) {
+      return logger.failure(`Batch ${i / batchSize + 1} failed: ${error.message}`)
+    }
   }
+
+  const { rows: [{ count }] } = await pool.query('SELECT COUNT(*) as count FROM events_data')
+  logger.success(`total events in DB: ${count}`)
 }
 
 export async function testCache(parcelsPerHour = 3600) {

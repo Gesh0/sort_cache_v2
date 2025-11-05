@@ -9,19 +9,16 @@ import dataRoutes from './routes/dataRoutes.js'
 import cacheRoute from './routes/cacheRoute.js'
 import createTestRoutes from './routes/testRoutes.js'
 
-import {
-  preloadSortmap,
-  initIngest,
-  preloadIngestJobs,
-} from './utils/init.js'
+import { preloadSortmap, initIngest, preloadIngestJobs } from './utils/init.js'
 import { setTimeOffset } from './utils/timestamps.js'
 import { insertEvents } from './utils/test.js'
+import { fetchEvents, fetchLocations } from './utils/comparison.js'
 
 const CONFIG = {
-  offset: 4.5,
-  range: 504,
+  offset: 4,
+  range: 336,
   data: 'real',
-  parcelsPerHour: 3600,
+  parcelsPerHour: 60000,
 }
 
 app.use(express.json())
@@ -35,9 +32,12 @@ app.listen(3000, async () => {
 
   setTimeOffset(CONFIG.offset)
 
-  await ingest_worker(CONFIG)
+  fetchLocations({ days: 10 }, { days: 40 })
+  fetchEvents({ days: 20 })
 
-  await preloadSortmap()
+  // await ingest_worker(CONFIG)
+
+  // await preloadSortmap()
 
   // if (CONFIG.range > 0) {
   //   await preloadIngestJobs(CONFIG.range / 24)
@@ -45,5 +45,5 @@ app.listen(3000, async () => {
 
   // await initIngest()
 
-  await insertEvents(CONFIG)
+  // await insertEvents(CONFIG)
 })
