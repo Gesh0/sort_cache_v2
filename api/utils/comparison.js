@@ -1,11 +1,21 @@
 import { DateTime, Interval } from 'luxon'
-import { toAPIFormat } from './timestamps.js'
 import { writeFile } from 'fs/promises'
 import { join } from 'path'
 import { pool } from './db.js'
 
-const authUrl = 'https://api.els.mk/users/login'
-const authConfig = {
+async function auth(type) {
+  try {
+    const authRes = await fetch('https://api.els.mk/users/login', authMap[type])
+    const tokenData = await authRes.json()
+    const token = tokenData.access_token
+
+    return token
+  } catch (error) {
+    console.log('[AUTH] error: ', JSON.stringify(error))
+  }
+}
+
+const authMap = {
   locations: {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -32,196 +42,157 @@ const authConfig = {
   },
 }
 
-export async function fetchLocations(offset, range) {
+function getBatches(offset, range) {
   const timeRef = DateTime.utc().minus(offset)
   const epoch = timeRef.minus(range)
 
   const interval = Interval.fromDateTimes(epoch, timeRef)
-  // console.log('interval: ', JSON.stringify(interval))
+  const batches = interval.splitBy({ hours: 8 })
 
-  const batches = interval.splitBy({ days: 1 })
-  // console.log('batches: ', JSON.stringify(batches))
+  return batches
+}
+
+async function chunkInsert(data, tableName, columnMap) {
+  if (!Array.isArray(data) || data.length === 0) {
+    console.log(`[INSERT] no ${tableName} data`)
+    return
+  }
+
+  const columns = Object.keys(columnMap)
+  const paramsPerRow = columns.length
+  const CHUNK_SIZE = Math.floor(60000 / paramsPerRow) // Stay under 65535 limit
+
+  let totalInserted = 0
+
+  for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+    const chunk = data.slice(i, i + CHUNK_SIZE)
+
+    const params = chunk.flatMap((row) =>
+      columns.map((col) => row[columnMap[col]] ?? null)
+    )
+
+    const values = chunk
+      .map((_, idx) => {
+        const placeholders = columns
+          .map((_, colIdx) => `$${idx * paramsPerRow + colIdx + 1}`)
+          .join(', ')
+        return `(${placeholders})`
+      })
+      .join(', ')
+
+    const columnNames = columns.join(', ')
+    const result = await pool.query(
+      `INSERT INTO ${tableName} (${columnNames}) VALUES ${values} ON CONFLICT DO NOTHING`,
+      params
+    )
+
+    totalInserted += result.rowCount
+  }
+
+  console.log(`[INSERT] ${tableName} ${totalInserted}`)
+}
+
+async function insertEvents(events) {
+  const valid = events.filter((e) => e.barcode && e.date)
+  if (valid.length === 0) {
+    console.log('[INSERT] no valid events')
+    return
+  }
+
+  await chunkInsert(valid, 'events_comp', {
+    event_id: 'eventId',
+    barcode: 'barcode',
+    status_id: 'statusId',
+    status_name: 'statusName',
+    location_type_id: 'locationTypeId',
+    location_name: 'locationName',
+    updated_at: 'date',
+  })
+}
+
+async function insertLocations(locations) {
+  const valid = locations.filter((l) => l.serialNumber && l.updatedAt)
+  if (valid.length === 0) {
+    console.log('[INSERT] no valid locations')
+    return
+  }
+
+  await chunkInsert(valid, 'location_comp', {
+    serial_number: 'serialNumber',
+    logistics_point_id: 'logisticsPointId',
+    logistics_point_name: 'logisticsPointName',
+    updated_at: 'updatedAt',
+  })
+}
+
+export async function fetchLocations(offset, range) {
+  const batches = getBatches(offset, range)
+  const token = await auth('locations')
 
   try {
-    const authRes = await fetch(authUrl, authConfig.locations)
-    const tokenData = await authRes.json()
-    const token = tokenData.access_token
-
-    const dataRes = await Promise.all(
+    await Promise.all(
       batches.map(async (e) => {
         const batchUrl = new URL('https://api.els.mk/v2/orders/sort')
-        batchUrl.searchParams.set('dateFrom', toAPIFormat(e.start.toISO()))
-        batchUrl.searchParams.set('dateTo', toAPIFormat(e.end.toISO()))
-        console.log(batchUrl.href)
-        const response = await fetch(batchUrl.toString(), {
+        batchUrl.searchParams.set('dateFrom', formatDate(e.start))
+        batchUrl.searchParams.set('dateTo', formatDate(e.end))
+
+        const response = await fetch(batchUrl, {
           headers: { Authorization: `Bearer ${token}` },
         })
         const result = await response.json()
+        console.log(`[LOC] ${e.start} -> ${e.end}`)
         await insertLocations(result)
-        return result
       })
     )
 
     // await writeToFile('locations.json', dataRes)
-    return dataRes
   } catch (error) {
-    // console.log('error at fetch locations:', error.message || error)
+    console.log('error at fetch locations:', error.message || error)
     throw error
   }
 }
 
-export async function fetchEvents(offset) {
-  const timeRef = DateTime.utc().minus(offset)
-  const epoch = timeRef.minus({ days: 1 })
+export async function fetchEvents(offset, range) {
+  const batches = getBatches(offset, range)
+  const token = await auth('events')
 
   try {
-    const authRes = await fetch(authUrl, authConfig.events)
-    const tokenData = await authRes.json()
-    const token = tokenData.access_token
+    await Promise.all(
+      batches.map(async (e) => {
+        const batchUrl = new URL(
+          'https://api.els.mk/courier-analytics/orders/status-track'
+        )
+        batchUrl.searchParams.set('eventDateFrom', formatDate(e.start))
+        batchUrl.searchParams.set('eventDateTo', formatDate(e.end))
+        batchUrl.searchParams.set('limit', 0)
 
-    const baseUrl = new URL(
-      'https://api.els.mk/courier-analytics/orders/status-track'
+        const response = await fetch(batchUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const result = await response.json()
+        console.log(`[EVE] ${e.start} -> ${e.end}`)
+        await insertEvents(result.data)
+      })
     )
-    baseUrl.searchParams.set('eventDateFrom', toAPIFormat(epoch))
-    baseUrl.searchParams.set('eventDateTo', toAPIFormat(timeRef))
-    baseUrl.searchParams.set('limit', 0)
 
-    console.log(baseUrl.href)
-    const response = await fetch(baseUrl.toString(), {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-
-    const result = await response.json()
-    // await writeToFile('events.json', result)
-
-    // Handle nested data structure if events are in a property
-    const events = Array.isArray(result)
-      ? result
-      : result.data || result.events || []
-    await insertEvents(events)
-
-    return result
+    // await writeToFile('locations.json', dataRes)
   } catch (error) {
-    // console.log('error at fetch events:', error.message || error)
+    console.log('error at fetch events:', error.message || error)
     throw error
   }
+}
+
+function formatDate(date) {
+  return new DateTime(date).toFormat('yyyy-MM-dd HH:mm:ss')
 }
 
 async function writeToFile(filename, data) {
   try {
     const filePath = join(process.cwd(), filename)
     await writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8')
-    // console.log(`Successfully wrote data to ${filename}`)
+    console.log(`Successfully wrote data to ${filename}`)
   } catch (error) {
     console.error(`Error writing to ${filename}:`, error.message || error)
     throw error
   }
-}
-
-async function insertEvents(events) {
-  if (!events?.length) return
-
-  // console.log(`Inserting ${events.length} events...`)
-  let inserted = 0
-
-  const batchSize = 1000
-  for (let i = 0; i < events.length; i += batchSize) {
-    const batch = events.slice(i, i + batchSize)
-    const values = batch
-      .map((_, idx) => {
-        const base = idx * 7
-        return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${
-          base + 5
-        }, $${base + 6}, $${base + 7})`
-      })
-      .join(', ')
-
-    const params = batch.flatMap((e) => [
-      e.eventId?.toString(),
-      e.barcode,
-      e.statusId,
-      e.statusName,
-      e.locationTypeId,
-      e.locationName,
-      e.date,
-    ])
-
-
-    const result = await pool.query(
-      `INSERT INTO events_comp (event_id, barcode, status_id, status_name, location_type_id, location_name, updated_at)
-       VALUES ${values}
-       ON CONFLICT DO NOTHING
-       RETURNING id`,
-      params
-    )
-    inserted += result.rowCount
-  }
-
-  // console.log(`Inserted ${inserted} events`)
-}
-
-async function insertLocations(locations) {
-  if (!locations?.length) return
-
-  // console.log(`Inserting ${locations.length} locations...`)
-  let inserted = 0
-
-  const batchSize = 1000
-  for (let i = 0; i < locations.length; i += batchSize) {
-    const batch = locations.slice(i, i + batchSize)
-    const values = batch
-      .map((_, idx) => {
-        const base = idx * 4
-        return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4})`
-      })
-      .join(', ')
-
-    const params = batch.flatMap((l) => [
-      l.serialNumber,
-      l.logisticsPointId,
-      l.logisticsPointName,
-      l.updatedAt,
-    ])
-
-    const result = await pool.query(
-      `INSERT INTO location_comp (serial_number, logistics_point_id, logistics_point_name, updated_at)
-       VALUES ${values}
-       ON CONFLICT DO NOTHING
-       RETURNING id`,
-      params
-    )
-    inserted += result.rowCount
-  }
-
-  // console.log(`Inserted ${inserted} locations`)
-}
-
-export async function getMatchRate() {
-  const { rows } = await pool.query(
-    `
-    select
-      d.location_date,
-      e.location_name,
-      count(e.id) as total_events,
-      sum(case when lc.serial_number is not null then 1 else 0 end) as matched_events,
-      count(e.id) - sum(case when lc.serial_number is not null then 1 else 0 end) as unmatched_events,
-      cast(sum(case when lc.serial_number is not null then 1 else 0 end) as numeric) * 100 / count(e.id) as matched_percentage
-    from
-      events_comp e
-    cross join lateral (
-      select distinct date(updated_at) as location_date
-      from location_comp
-    ) d
-    left join
-      location_comp lc
-      on lc.serial_number = e.barcode
-      and date(lc.updated_at) = d.location_date
-    group by
-      d.location_date, e.location_name
-    order by
-      d.location_date, e.location_name;
-    `
-  )
-
-  return rows
 }

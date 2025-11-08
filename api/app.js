@@ -7,6 +7,7 @@ import queryRoutes from './routes/queryRoutes.js'
 import jobsRoutes from './routes/jobsRoutes.js'
 import dataRoutes from './routes/dataRoutes.js'
 import cacheRoute from './routes/cacheRoute.js'
+import compRoute from './routes/compRoutes.js'
 import createTestRoutes from './routes/testRoutes.js'
 
 import { preloadSortmap, initIngest, preloadIngestJobs } from './utils/init.js'
@@ -28,12 +29,10 @@ app.listen(3000, async () => {
   app.use('/jobs', jobsRoutes)
   app.use('/cache', cacheRoute)
   app.use('/data', dataRoutes)
-  app.use('/test', createTestRoutes(CONFIG))
+  app.use('/comparison', compRoute)
+  // app.use('/test', createTestRoutes(CONFIG))
 
-  setTimeOffset(CONFIG.offset)
-
-  fetchLocations({ days: 10 }, { days: 40 })
-  fetchEvents({ days: 20 })
+  // setTimeOffset(CONFIG.offset)
 
   // await ingest_worker(CONFIG)
 
@@ -46,4 +45,16 @@ app.listen(3000, async () => {
   // await initIngest()
 
   // await insertEvents(CONFIG)
+
+  // app.get('/cache/:barcode', (req, res) => {
+  //   const barcode = req.params.barcode
+  //   console.log(JSON.stringify(barcode))
+  //   res.send({ port: 2 })
+  // })
+
+  // app.post('/register', (req, res) => {
+  //   const data = req.body
+  //   console.log(JSON.stringify(data))
+  //   res.status(200).send()
+  // })
 })
